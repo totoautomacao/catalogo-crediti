@@ -1,0 +1,61 @@
+name: Compactar rodape Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/compact-radio-footer-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar rodape e bloquear movimento lateral
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+
+          old="document.body.style.paddingBottom='calc(145px + env(safe-area-inset-bottom))';"
+          new="document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(72px + env(safe-area-inset-bottom))';"
+          if old not in s:
+              raise SystemExit('padding antigo nao encontrado')
+          s=s.replace(old,new,1)
+
+          old_css="#crediti-radio-root{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:90;"
+          new_css="#crediti-radio-root{position:fixed;left:10px;bottom:calc(8px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px);z-index:90;"
+          if old_css not in s:
+              raise SystemExit('css antigo da radio nao encontrado')
+          s=s.replace(old_css,new_css,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          grep -q "paddingBottom='calc(72px + env(safe-area-inset-bottom))'" radio-crediti.js
+          grep -q "touchAction='pan-y pinch-zoom'" radio-crediti.js
+          grep -q "left:10px;bottom:calc(8px + env(safe-area-inset-bottom))" radio-crediti.js
+      - name: Atualizar versao do script no catalogo
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          import re
+          s2=re.sub(r'/radio-crediti\.js\?v=\d+', '/radio-crediti.js?v=3', s, count=1)
+          if s2==s:
+              if '/radio-crediti.js' in s:
+                  s2=s.replace('/radio-crediti.js','/radio-crediti.js?v=3',1)
+              else:
+                  raise SystemExit('script da radio nao encontrado')
+          p.write_text(s2,encoding='utf-8')
+          PY
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Compactar rodape e fixar rolagem vertical do catalogo"
+          git push
