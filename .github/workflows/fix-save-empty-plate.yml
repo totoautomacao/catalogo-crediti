@@ -1,0 +1,60 @@
+name: Corrigir salvamento de placa vazia
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-save-empty-plate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-save:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Corrigir cadastro sem placa e mensagens de erro
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = "placa:form.placa.trim().toUpperCase()"
+          new = "placa:form.placa.trim()?form.placa.trim().toUpperCase():null"
+          if old not in s:
+              raise SystemExit('Trecho da placa não encontrado')
+          s = s.replace(old, new, 1)
+
+          old = "if(result.error){alert(`Não foi possível salvar: ${result.error.message}`);setLoading(false);return}id=id||result.data.id;"
+          new = "if(result.error){const duplicada=result.error.code==='23505'||String(result.error.message||'').includes('veiculos_placa_key');alert(duplicada?'Essa placa já está cadastrada. Abra o veículo existente para editar ou confira a placa informada.':`Não foi possível salvar: ${result.error.message}`);setLoading(false);return}id=id||result.data.id;if(!form.id&&id)setForm(prev=>({...prev,id}));"
+          if old not in s:
+              raise SystemExit('Trecho de erro/salvamento não encontrado')
+          s = s.replace(old, new, 1)
+
+          old = "setForm({...v,valor_lojista:v.valor_lojista?numeroBR(v.valor_lojista):''"
+          new = "setForm({...v,placa:v.placa||'',valor_lojista:v.valor_lojista?numeroBR(v.valor_lojista):''"
+          if old not in s:
+              raise SystemExit('Trecho editar não encontrado')
+          s = s.replace(old, new, 1)
+
+          old = '<label><span className="text-sm font-bold block mb-2">Placa</span><input className="field uppercase" placeholder="ABC1D23" value={form.placa} onChange={e=>setForm({...form,placa:e.target.value})}/></label>'
+          new = '<label><span className="text-sm font-bold block mb-2">Placa <span className="text-black/35 font-medium">(opcional)</span></span><input className="field uppercase" placeholder="ABC1D23" maxLength="7" value={form.placa} onChange={e=>setForm({...form,placa:e.target.value.replace(/[^a-zA-Z0-9]/g,\'\').toUpperCase()})}/></label>'
+          if old not in s:
+              raise SystemExit('Campo placa não encontrado')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Publicar correção
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Corrigir cadastro de veículo sem placa e retry de fotos"
+          git push
