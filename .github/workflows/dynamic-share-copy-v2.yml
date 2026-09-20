@@ -1,0 +1,61 @@
+name: Aplicar mensagens dinamicas v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/dynamic-share-copy-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar gerador
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          A=['Esse {veiculo} merece atenção e pode encaixar bem no que você procura.','Se você já vinha procurando, esse {veiculo} vale uma análise mais de perto.','Esse {veiculo} pode transformar pesquisa em uma opção concreta.','Antes de seguir procurando, vale conferir esse {veiculo} com calma.','Esse {veiculo} pode equilibrar necessidade, desejo e praticidade.','Imagine esse {veiculo} fazendo parte da sua rotina real.','Esse {veiculo} chama atenção pelo conjunto e merece ser comparado.','Uma boa compra começa quando o veículo combina com seus planos.','Esse {veiculo} pode representar uma mudança prática no dia a dia.','Se a ideia é sair da pesquisa, esse {veiculo} merece atenção.','Esse {veiculo} pode ser exatamente a opção que você queria encontrar.','Quando aparece algo próximo do que você procura, vale conferir os detalhes.','Esse {veiculo} pode ser uma conquista que facilita sua rotina.','Quem busca esse perfil deve olhar esse {veiculo} com atenção.','Esse {veiculo} pode ser a opção que faz você parar de comparar e avaliar algo real.']
+          BC=['Imagine a praticidade de ter um carro para trabalho, compromissos e família.','Para a família, ter o próprio carro pode significar mais conforto e autonomia.','Um carro bem escolhido traz menos dependência e mais liberdade na rotina.','Esse perfil pode ajudar em viagens, trabalho e compromissos do dia a dia.','Ter o próprio carro pode deixar compras e passeios muito mais simples.','Quando o carro combina com sua rotina, cada saída fica mais prática.','Para quem pensa em conforto e mobilidade, esse perfil pode fazer sentido.','Um carro pode representar tempo ganho e mais liberdade.','Esse perfil pode atender quem precisa de mobilidade com conforto.','Um veículo assim pode tornar planos de família e trabalho mais fáceis.','Ter o próprio carro pode dar mais controle sobre seus horários.','Esse carro pode conciliar rotina, família e deslocamentos.','Imagine o quanto o veículo certo pode simplificar seu dia.','Esse perfil pode trazer sensação de conquista e independência.','Mobilidade própria pode abrir mais possibilidades para você e sua família.']
+          BM=['Imagine resolver a rotina com mais agilidade e menos tempo perdido.','Uma moto pode trazer autonomia para trabalho, estudo e compromissos.','Para quem valoriza praticidade, esse perfil pode simplificar a rotina.','Ter a própria moto pode significar mais liberdade nos deslocamentos.','Uma moto bem escolhida pode economizar tempo todos os dias.','Esse perfil combina com quem busca mobilidade e agilidade.','Para quem se desloca muito, uma moto pode fazer diferença na rotina.','Essa moto pode trazer mais independência nos seus horários.','Ter a própria moto pode tornar pequenos deslocamentos muito mais simples.','Esse tipo de moto pode atender quem precisa de praticidade.','Uma moto pode ser ferramenta de trabalho e também uma conquista.','Para quem quer ganhar tempo no trânsito, esse perfil merece atenção.','Essa moto pode combinar com quem quer mais autonomia.','Mobilidade própria facilita compromissos e novas oportunidades.','Esse perfil pode ser uma escolha inteligente para quem busca praticidade.']
+          U=['Se faz sentido para você, vale confirmar a disponibilidade agora, porque o catálogo muda.','A disponibilidade pode mudar; vale conferir se ele continua livre.','Se gostou do conjunto, confirme a disponibilidade enquanto o anúncio está ativo.','Veículos podem entrar em negociação; se interessou, vale checar agora.','Antes de deixar para depois, vale confirmar se ele continua disponível.','Se entrou no seu radar, posso confirmar agora a disponibilidade e os detalhes.','Confirmar disponibilidade cedo evita perder tempo recomeçando a pesquisa.','Se você já procurava algo assim, vale verificar a disponibilidade agora.','O melhor momento para tirar dúvidas é enquanto o veículo está anunciado.','Se encaixa no que você procura, posso verificar agora se continua disponível.','Vale confirmar hoje, porque anúncios podem mudar conforme entram em negociação.','Antes de continuar procurando, posso checar se ele ainda está disponível.','Não precisa decidir no impulso: confirme a disponibilidade e escolha com calma.','O anúncio está no catálogo agora; vale verificar a disponibilidade.','Confirmar agora evita planejar em cima de uma disponibilidade que já mudou.']
+          E=['Uma compra boa continua fazendo sentido depois que a empolgação passa.','A conquista fica melhor quando a escolha funciona para sua vida real.','Comprar o veículo certo é transformar plano em algo útil no dia a dia.','Ter as informações certas pode transformar desejo em uma decisão segura.','Se você se imagina usando e ainda faz sentido, vale olhar com atenção.','A decisão fica mais leve quando você sabe o que está comprando.','Uma conquista importante precisa fazer sentido para seu momento.','O melhor veículo é aquele que combina com seus planos.','Escolher bem hoje pode trazer mais praticidade depois.','Quando encaixa na realidade, o veículo ganha propósito.','Um veículo pode marcar uma fase nova quando facilita sua rotina.','A compra certa é aquela que você consegue explicar para si mesmo.','Ter uma opção concreta ajuda a decidir melhor do que apenas imaginar.','Uma boa escolha acontece quando emoção e razão apontam juntas.','Se faz sentido no uso e no orçamento, vale avaliar de verdade.']
+          C=['Quer que eu confirme a disponibilidade e te passe os detalhes?','Posso verificar agora se ele continua disponível?','Quer que eu te passe o que falta para decidir com segurança?','Posso confirmar a disponibilidade e te explicar os próximos passos?','Quer que eu confira se ele ainda está livre agora?','Se quiser, eu confirmo a disponibilidade e te passo tudo de forma simples.','Quer que eu verifique se ele ainda está disponível para negociação?','Posso conferir a situação dele e te mandar os detalhes completos?','Quer que eu confirme agora a disponibilidade desse veículo?','Se esse modelo te interessou, me chama que eu verifico agora.','Quer que eu confira e te diga se vale continuar avaliando?','Posso confirmar para você não perder tempo com anúncio desatualizado?','Quer que eu veja agora se ele continua no catálogo?','Posso checar a disponibilidade e responder suas dúvidas agora?','Quer que eu confirme se ele ainda está disponível antes de você seguir procurando?']
+          helper=(
+            'const CREDITI_A='+json.dumps(A,ensure_ascii=False)+';\n'+
+            'const CREDITI_BC='+json.dumps(BC,ensure_ascii=False)+';\n'+
+            'const CREDITI_BM='+json.dumps(BM,ensure_ascii=False)+';\n'+
+            'const CREDITI_U='+json.dumps(U,ensure_ascii=False)+';\n'+
+            'const CREDITI_E='+json.dumps(E,ensure_ascii=False)+';\n'+
+            'const CREDITI_C='+json.dumps(C,ensure_ascii=False)+';\n'+
+            "function creditRand(n){if(window.crypto&&window.crypto.getRandomValues){const a=new Uint32Array(1);window.crypto.getRandomValues(a);return a[0]%n}return Math.floor(Math.random()*n)}\n"+
+            "function creditNome(v){return [v?.marca,v?.modelo].filter(Boolean).join(' ').trim()||'este veículo'}\n"+
+            "function creditHist(){try{return JSON.parse(localStorage.getItem('crediti_share_history_v3')||'[]')}catch{return []}}\n"+
+            "function creditSalvar(k){try{const a=creditHist();localStorage.setItem('crediti_share_history_v3',JSON.stringify([k,...a.filter(x=>x!==k)].slice(0,150)))}catch{}}\n"+
+            "function gerarMensagemVendaCrediti(v){const n=creditNome(v),m=String(v?.categoria||'').toLowerCase().includes('moto'),b=m?CREDITI_BM:CREDITI_BC,h=creditHist();let x,k,t=0;do{x=[creditRand(15),creditRand(15),creditRand(15),creditRand(15),creditRand(15)];k=x.join('-')+(m?'-m':'-c');t++}while(h.includes(k)&&t<50);creditSalvar(k);return CREDITI_A[x[0]].replaceAll('{veiculo}',n)+'\\n\\n'+b[x[1]]+'\\n\\n'+CREDITI_U[x[2]]+'\\n\\n'+CREDITI_E[x[3]]+'\\n\\n📲 *'+CREDITI_C[x[4]]+'*'}\n"+
+            "function montarMensagemCompartilhamento(v){const n=creditNome(v),l=['🚘 *OPORTUNIDADE CREDITI*','',`*${n}*`];if(v?.versao&&v.versao!==v.modelo)l.push(`Versão: ${v.versao}`);if(v?.ano_fabricacao||v?.ano_modelo)l.push(`Ano: ${v.ano_fabricacao||'-'}/${v.ano_modelo||'-'}`);if(Number(v?.quilometragem||0)>0)l.push(`KM: ${numeroBR(v.quilometragem)} km`);if(v?.descricao)l.push('',`✅ ${v.descricao}`);if(Number(v?.nosso_valor||0)>0)l.push('',`💰 *PREÇO CREDITI: ${dinheiro(v.nosso_valor)}*`);l.push('',gerarMensagemVendaCrediti(v));return l.join('\\n')}\n"
+          )
+          if 'const CREDITI_A=' not in s:
+              s=s.replace('function App(){',helper+'\nfunction App(){',1)
+          pat=re.compile(r"  const texto=`🚘 \*OPORTUNIDADE CREDITI\*.*?📲 \*Quer que eu confirme a disponibilidade para você\?\*`;",re.S)
+          s,n=pat.subn('  const texto=montarMensagemCompartilhamento(v);',s,count=1)
+          if n!=1:
+              raise SystemExit(f'Mensagem fixa não localizada: {n}')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar
+        run: |
+          grep -q "const CREDITI_A=" index.html
+          grep -q "const texto=montarMensagemCompartilhamento(v);" index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Adicionar gerador dinamico com 759375 combinacoes"
+          git push
