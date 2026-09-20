@@ -88,11 +88,41 @@ async function compartilharCatalogoCompleto(){
  try{await navigator.clipboard.writeText(url);alert('Link do catálogo copiado. Agora é só enviar ao cliente.')}catch{window.prompt('Copie o link do catálogo:',url)}
 }
 
+
+const CREDITI_OFFLINE_DB='crediti-catalogo-offline-v2';
+const CREDITI_OFFLINE_STORE='dados';
+const CREDITI_OFFLINE_PUBLICO='veiculos-publicos';
+const CREDITI_OFFLINE_INTERNO='veiculos-internos';
+function creditAbrirDb(){return new Promise((resolve,reject)=>{try{const r=indexedDB.open(CREDITI_OFFLINE_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(CREDITI_OFFLINE_STORE))r.result.createObjectStore(CREDITI_OFFLINE_STORE)};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)}catch(e){reject(e)}})}
+async function creditDbLer(chave){try{const db=await creditAbrirDb();return await new Promise((resolve,reject)=>{const tx=db.transaction(CREDITI_OFFLINE_STORE,'readonly');const req=tx.objectStore(CREDITI_OFFLINE_STORE).get(chave);req.onsuccess=()=>resolve(req.result?.dados||[]);req.onerror=()=>reject(req.error)})}catch{return []}}
+async function creditDbSalvar(chave,dados){try{const db=await creditAbrirDb();await new Promise((resolve,reject)=>{const tx=db.transaction(CREDITI_OFFLINE_STORE,'readwrite');tx.objectStore(CREDITI_OFFLINE_STORE).put({dados,atualizadoEm:Date.now()},chave);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}catch(e){console.warn('Cache offline indisponível:',e)}}
+function creditNormalizarLista(data){return (data||[]).map(v=>({...v,fotos_veiculo:[...(v.fotos_veiculo||[])].sort((a,b)=>(a.ordem||99)-(b.ordem||99))}))}
+function creditVersaoPublica(v){return {id:v.id,categoria:v.categoria,marca:v.marca,modelo:v.modelo,versao:v.versao,ano_fabricacao:v.ano_fabricacao,ano_modelo:v.ano_modelo,nosso_valor:v.nosso_valor,quilometragem:v.quilometragem,descricao:v.descricao,criado_em:v.criado_em,fotos_veiculo:creditNormalizarLista([{fotos_veiculo:v.fotos_veiculo||[]}])[0].fotos_veiculo}}
+async function creditSalvarListasOffline(lista){const normal=creditNormalizarLista(lista);if(CREDITI_MODO_CLIENTE){await creditDbSalvar(CREDITI_OFFLINE_PUBLICO,normal)}else{await Promise.all([creditDbSalvar(CREDITI_OFFLINE_INTERNO,normal),creditDbSalvar(CREDITI_OFFLINE_PUBLICO,normal.map(creditVersaoPublica))])}}
+async function creditLerListaOffline(){return creditDbLer(CREDITI_MODO_CLIENTE?CREDITI_OFFLINE_PUBLICO:CREDITI_OFFLINE_INTERNO)}
+async function creditCacheFotos(lista){const urls=[...new Set((lista||[]).flatMap(v=>(v.fotos_veiculo||[]).map(f=>f.url_foto).filter(Boolean)))];if(!urls.length)return;try{navigator.storage?.persist?.().catch(()=>{});if(navigator.serviceWorker?.controller){navigator.serviceWorker.controller.postMessage({type:'CACHE_VEHICLE_IMAGES',urls});return}if('caches' in window){const c=await caches.open('crediti-fotos-v2');await Promise.allSettled(urls.map(async u=>{if(await c.match(u))return;const r=await fetch(u,{mode:'no-cors'});if(r)await c.put(u,r.clone())}))}}catch(e){console.warn('Pré-cache das fotos indisponível:',e)}}
+
 function App(){
  const [veiculos,setVeiculos]=useState([]),[form,setForm]=useState(vazio),[fotoItens,setFotoItens]=useState([]),[originais,setOriginais]=useState([]),[formAberto,setFormAberto]=useState(false),[loading,setLoading]=useState(false),[listaLoading,setListaLoading]=useState(true),[busca,setBusca]=useState('');
  const [marcas,setMarcas]=useState([]),[modelos,setModelos]=useState([]),[anosFipe,setAnosFipe]=useState([]),[marcaBusca,setMarcaBusca]=useState(''),[modeloBusca,setModeloBusca]=useState(''),[showMarcas,setShowMarcas]=useState(false),[showModelos,setShowModelos]=useState(false),[precosVisiveis,setPrecosVisiveis]=useState({});
- useEffect(()=>{carregar()},[]);useEffect(()=>{carregarMarcas()},[form.categoria]);useEffect(()=>{if(CREDITI_MODO_CLIENTE&&!listaLoading){const id=new URLSearchParams(window.location.search).get('veiculo');if(id)setTimeout(()=>document.getElementById(`veiculo-${id}`)?.scrollIntoView({behavior:'smooth',block:'center'}),250)}},[listaLoading]);
- async function carregar(){setListaLoading(true);const campos=CREDITI_MODO_CLIENTE?'id,categoria,marca,modelo,versao,ano_fabricacao,ano_modelo,nosso_valor,quilometragem,descricao,criado_em,fotos_veiculo(id,url_foto,ordem)':'*, fotos_veiculo(id,url_foto,ordem)';const {data,error}=await supabaseClient.from('veiculos').select(campos).order('criado_em',{ascending:false});if(error)console.error(error);else setVeiculos((data||[]).map(v=>({...v,fotos_veiculo:(v.fotos_veiculo||[]).sort((a,b)=>(a.ordem||99)-(b.ordem||99))})));setListaLoading(false)}
+ useEffect(()=>{carregar();const aoVoltarInternet=()=>carregar();window.addEventListener('online',aoVoltarInternet);return()=>window.removeEventListener('online',aoVoltarInternet)},[]);useEffect(()=>{carregarMarcas()},[form.categoria]);useEffect(()=>{if(CREDITI_MODO_CLIENTE&&!listaLoading){const id=new URLSearchParams(window.location.search).get('veiculo');if(id)setTimeout(()=>document.getElementById(`veiculo-${id}`)?.scrollIntoView({behavior:'smooth',block:'center'}),250)}},[listaLoading]);
+ async function carregar(){
+  setListaLoading(true);
+  const offline=creditNormalizarLista(await creditLerListaOffline());
+  if(offline.length){setVeiculos(offline);setListaLoading(false);creditCacheFotos(offline)}
+  const campos=CREDITI_MODO_CLIENTE?'id,categoria,marca,modelo,versao,ano_fabricacao,ano_modelo,nosso_valor,quilometragem,descricao,criado_em,fotos_veiculo(id,url_foto,ordem)':'*, fotos_veiculo(id,url_foto,ordem)';
+  try{
+   const {data,error}=await supabaseClient.from('veiculos').select(campos).order('criado_em',{ascending:false});
+   if(error)throw error;
+   const lista=creditNormalizarLista(data||[]);
+   setVeiculos(lista);setListaLoading(false);
+   creditSalvarListasOffline(lista);
+   creditCacheFotos(lista);
+  }catch(error){
+   console.warn('Sem conexão: usando catálogo salvo no aparelho.',error);
+   if(!offline.length){setVeiculos([]);setListaLoading(false)}
+  }
+ }
  async function carregarMarcas(){try{const r=await fetch(`${FIPE}/${fipeTipo(form.categoria)}/marcas`);const d=await r.json();setMarcas(Array.isArray(d)?d:[])}catch{setMarcas([])}}
  async function escolherMarca(m){setForm(x=>({...x,marca:m.nome,fipe_marca_codigo:String(m.codigo),modelo:'',versao:'',fipe_modelo_codigo:'',fipe_ano_codigo:''}));setMarcaBusca(m.nome);setModeloBusca('');setShowMarcas(false);setAnosFipe([]);try{const r=await fetch(`${FIPE}/${fipeTipo(form.categoria)}/marcas/${m.codigo}/modelos`);const d=await r.json();setModelos(d.modelos||[])}catch{setModelos([])}}
  async function escolherModelo(m){setForm(x=>({...x,modelo:m.nome,versao:m.nome,fipe_modelo_codigo:String(m.codigo),fipe_ano_codigo:''}));setModeloBusca(m.nome);setShowModelos(false);try{const r=await fetch(`${FIPE}/${fipeTipo(form.categoria)}/marcas/${form.fipe_marca_codigo}/modelos/${m.codigo}/anos`);const d=await r.json();setAnosFipe(Array.isArray(d)?d:[])}catch{setAnosFipe([])}}
