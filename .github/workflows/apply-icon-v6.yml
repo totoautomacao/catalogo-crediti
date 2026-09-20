@@ -16,20 +16,108 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar Pillow
-        run: pip install pillow
+      - name: Instalar conversor SVG
+        run: pip install cairosvg
 
-      - name: Gerar ícones novos a partir da arte aprovada
+      - name: Criar arte limpa do carro aprovado
+        run: |
+          cat > icon-clean-v6.svg <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <defs>
+              <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ff4147"/>
+                <stop offset="0.48" stop-color="#f31422"/>
+                <stop offset="1" stop-color="#ce0014"/>
+              </linearGradient>
+              <linearGradient id="hood" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ff6065"/>
+                <stop offset="0.5" stop-color="#f51c29"/>
+                <stop offset="1" stop-color="#e60018"/>
+              </linearGradient>
+              <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#485866"/>
+                <stop offset="1" stop-color="#111923"/>
+              </linearGradient>
+              <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff"/>
+                <stop offset="1" stop-color="#dbe6ed"/>
+              </linearGradient>
+              <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="8"/>
+              </filter>
+              <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="2"/>
+              </filter>
+            </defs>
+
+            <rect width="512" height="512" rx="108" fill="#ffffff"/>
+            <rect x="7" y="7" width="498" height="498" rx="104" fill="none" stroke="#eeeeee" stroke-width="2"/>
+            <ellipse cx="256" cy="406" rx="154" ry="18" fill="#000" opacity=".10" filter="url(#shadow)"/>
+
+            <!-- mirrors -->
+            <g>
+              <path d="M101 195C73 184 58 189 55 207c-2 18 17 25 48 19l15-21-17-10Z" fill="url(#body)"/>
+              <path d="M411 195c28-11 43-6 46 12 2 18-17 25-48 19l-15-21 17-10Z" fill="url(#body)"/>
+              <path d="M67 216c12 8 25 9 38 6l7-12-44 6Z" fill="#111923" opacity=".95"/>
+              <path d="M445 216c-12 8-25 9-38 6l-7-12 44 6Z" fill="#111923" opacity=".95"/>
+            </g>
+
+            <!-- wheels behind body -->
+            <rect x="104" y="342" width="52" height="78" rx="23" fill="#14191f"/>
+            <rect x="356" y="342" width="52" height="78" rx="23" fill="#14191f"/>
+            <path d="M115 365v36M126 359v49M138 359v49M149 365v36" stroke="#2a323b" stroke-width="3" opacity=".8"/>
+            <path d="M367 365v36M378 359v49M390 359v49M401 365v36" stroke="#2a323b" stroke-width="3" opacity=".8"/>
+
+            <!-- main body -->
+            <path d="M123 203c14-71 57-111 112-118h42c55 7 98 47 112 118l35 33c12 12 18 28 18 46v80c0 26-21 47-47 47H117c-26 0-47-21-47-47v-80c0-18 6-34 18-46l35-33Z" fill="url(#body)"/>
+
+            <!-- windshield -->
+            <path d="M159 203c16-52 46-82 88-88h18c42 6 72 36 88 88H159Z" fill="url(#glass)"/>
+            <path d="M174 193c20-39 42-59 70-65h7l-56 65h-21Z" fill="#ffffff" opacity=".10"/>
+            <path d="M229 121h54l-10 18h-34l-10-18Z" fill="#222d37" opacity=".95"/>
+
+            <!-- hood -->
+            <path d="M133 220c34-22 212-22 246 0l-34 79H167l-34-79Z" fill="url(#hood)"/>
+            <path d="M166 224c31-13 149-13 180 0l-17 20H183l-17-20Z" fill="#ff7c80" opacity=".35"/>
+            <path d="M163 231l38 58M349 231l-38 58" stroke="#d50015" stroke-width="3" opacity=".55"/>
+
+            <!-- headlights dark housings -->
+            <path d="M94 268c24-25 62-31 105-14l-22 48c-39 7-69-5-83-34Z" fill="#202a33"/>
+            <path d="M418 268c-24-25-62-31-105-14l22 48c39 7 69-5 83-34Z" fill="#202a33"/>
+            <!-- LEDs -->
+            <path d="M108 268c18-13 40-16 68-8l-8 25c-23 4-45-2-60-17Z" fill="url(#lamp)"/>
+            <path d="M404 268c-18-13-40-16-68-8l8 25c23 4 45-2 60-17Z" fill="url(#lamp)"/>
+            <path d="M113 271c17-9 34-11 53-7" stroke="#ffffff" stroke-width="6" stroke-linecap="round" filter="url(#soft)"/>
+            <path d="M399 271c-17-9-34-11-53-7" stroke="#ffffff" stroke-width="6" stroke-linecap="round" filter="url(#soft)"/>
+
+            <!-- upper grille -->
+            <path d="M169 305h174c13 0 22 12 17 24l-9 21c-4 9-13 15-23 15H184c-10 0-19-6-23-15l-9-21c-5-12 4-24 17-24Z" fill="#111820"/>
+            <path d="M170 322h172M167 338h178M177 353h158" stroke="#303943" stroke-width="6" stroke-linecap="round"/>
+
+            <!-- lower bumper and grille -->
+            <path d="M123 355c19 17 43 25 72 28h122c29-3 53-11 72-28l-13 39H136l-13-39Z" fill="#df0016" opacity=".68"/>
+            <path d="M160 362h192l24 31H136l24-31Z" fill="#121920"/>
+            <path d="M156 375h200M149 388h214" stroke="#303943" stroke-width="6" stroke-linecap="round"/>
+
+            <!-- side intakes -->
+            <path d="M94 333c15-9 34-8 54 3l-17 45h-29c-13-11-16-27-8-48Z" fill="#202832"/>
+            <path d="M418 333c-15-9-34-8-54 3l17 45h29c13-11 16-27 8-48Z" fill="#202832"/>
+
+            <!-- bumper highlight -->
+            <path d="M105 392c43 19 258 19 302 0" fill="none" stroke="#ff5660" stroke-width="3" opacity=".72"/>
+          </svg>
+          SVG
+
+      - name: Gerar PNGs nítidos e exclusivos
         run: |
           python - <<'PY'
-          from PIL import Image
-          img=Image.open('icon-approved-v6.jpg').convert('RGB')
+          import cairosvg
           for size,name in [
               (192,'icon-clean-192-v6.png'),
               (512,'icon-clean-512-v6.png'),
               (180,'apple-touch-icon-clean-v6.png')
           ]:
-              img.resize((size,size),Image.Resampling.LANCZOS).save(name,'PNG',optimize=True)
+              cairosvg.svg2png(url='icon-clean-v6.svg',write_to=name,output_width=size,output_height=size)
           PY
 
       - name: Atualizar manifesto do PWA
@@ -83,6 +171,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add icon-clean-192-v6.png icon-clean-512-v6.png apple-touch-icon-clean-v6.png manifest.webmanifest index.html sw.js
+          git add icon-clean-v6.svg icon-clean-192-v6.png icon-clean-512-v6.png apple-touch-icon-clean-v6.png manifest.webmanifest index.html sw.js
           git commit -m "Aplicar ícone limpo aprovado no PWA v6"
           git push
