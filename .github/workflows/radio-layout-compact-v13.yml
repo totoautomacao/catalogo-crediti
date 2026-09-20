@@ -1,0 +1,54 @@
+name: Compactar layout Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/radio-layout-compact-v13.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar layout do player no celular
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+          old=".is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:block}.cr-close"
+          new=".is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:none}.is-ios .cr-copy{display:block!important;min-width:132px;max-width:145px}.cr-shell.is-open .cr-bars{display:none!important}.cr-close"
+          if old not in s:
+              raise SystemExit('CSS alvo nao encontrado')
+          s=s.replace(old,new,1)
+          old2="const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};"
+          new2="const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded);if(IS_IOS&&expanded){setStatus('Volume: botões do celular')}else if(IS_IOS&&!expanded&&audio&&!audio.paused){setStatus('Tocando • qualidade alta')}};"
+          if old2 not in s:
+              raise SystemExit('setOpen alvo nao encontrado')
+          s=s.replace(old2,new2,1)
+          s=s.replace('Volume: use os botões do celular','Volume: botões do celular')
+          p.write_text(s,encoding='utf-8')
+
+          h=Path('index.html')
+          t=h.read_text(encoding='utf-8')
+          import re
+          t,n=re.subn(r'/radio-crediti\.js\?v=\d+','/radio-crediti.js?v=13',t,count=1)
+          if n!=1:
+              raise SystemExit('referencia radio nao encontrada')
+          h.write_text(t,encoding='utf-8')
+          PY
+      - name: Validar
+        run: |
+          grep -q 'Volume: botões do celular' radio-crediti.js
+          grep -q 'min-width:132px' radio-crediti.js
+          grep -q 'radio-crediti.js?v=13' index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Compactar player da Radio Crediti no celular"
+          git push
