@@ -1,0 +1,88 @@
+name: Aplicar imagem exata do ícone PWA v7
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-exact-icon-v7.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-exact-icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Pillow
+        run: pip install pillow
+
+      - name: Gerar tamanhos PWA a partir da imagem exata aprovada
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          src = Image.open('icon-exact-source-v7.png').convert('RGBA')
+          for size, name in [
+              (192, 'icon-exact-192-v7.png'),
+              (512, 'icon-exact-512-v7.png'),
+              (180, 'apple-touch-icon-exact-v7.png')
+          ]:
+              src.resize((size, size), Image.Resampling.LANCZOS).save(name, 'PNG', optimize=True)
+          PY
+
+      - name: Atualizar manifesto
+        run: |
+          cat > manifest.webmanifest <<'JSON'
+          {
+            "id": "/",
+            "name": "Catálogo Crediti",
+            "short_name": "Catálogo Crediti",
+            "description": "Catálogo de veículos Crediti",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "portrait-primary",
+            "background_color": "#ffffff",
+            "theme_color": "#FDCA01",
+            "icons": [
+              {"src":"/icon-exact-192-v7.png","sizes":"192x192","type":"image/png","purpose":"any"},
+              {"src":"/icon-exact-512-v7.png","sizes":"512x512","type":"image/png","purpose":"any"}
+            ]
+          }
+          JSON
+
+      - name: Atualizar referências do iPhone e navegador
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r'<link rel="manifest"[^>]*>', '<link rel="manifest" href="/manifest.webmanifest?v=7" />', s, count=1)
+          s = re.sub(r'<link rel="icon"[^>]*>', '<link rel="icon" type="image/png" sizes="192x192" href="/icon-exact-192-v7.png" />', s, count=1)
+          s = re.sub(r'<link rel="apple-touch-icon"[^>]*>', '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-exact-v7.png" />', s, count=1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Renovar cache do PWA
+        run: |
+          cat > sw.js <<'JS'
+          const CACHE='catalogo-crediti-v7';
+          self.addEventListener('install',()=>self.skipWaiting());
+          self.addEventListener('activate',event=>event.waitUntil((async()=>{
+            const keys=await caches.keys();
+            await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+            await self.clients.claim();
+          })()));
+          self.addEventListener('fetch',()=>{});
+          JS
+
+      - name: Publicar no main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icon-exact-192-v7.png icon-exact-512-v7.png apple-touch-icon-exact-v7.png manifest.webmanifest index.html sw.js
+          git commit -m "Aplicar imagem exata aprovada no ícone PWA v7"
+          git push
