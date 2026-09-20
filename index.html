@@ -1,197 +1,487 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo Crediti</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#FDCA01" />
+  <title>Catálogo Crediti</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --crediti: #FDCA01;
+      --ink: #111111;
+      --ice: #F5F6F2;
+      --muted: #727272;
+      --line: #E7E7E2;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 88% 2%, rgba(253,202,1,.18), transparent 25rem),
+        var(--ice);
+      color: var(--ink);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .glass {
+      background: rgba(255,255,255,.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .card-shadow { box-shadow: 0 18px 55px rgba(18,18,18,.07); }
+    .soft-shadow { box-shadow: 0 10px 30px rgba(18,18,18,.06); }
+
+    .field {
+      width: 100%;
+      min-height: 50px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      padding: 0 15px;
+      outline: none;
+      transition: .18s ease;
+    }
+    .field:focus {
+      border-color: #111;
+      box-shadow: 0 0 0 4px rgba(17,17,17,.06);
+    }
+
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body class="bg-gray-100 font-sans text-black">
-    <div id="root"></div>
+<body>
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { createClient } = supabase;
+  <script type="text/babel">
+    const { useMemo, useState, useEffect } = React;
+    const { createClient } = supabase;
 
-        const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
-        const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
-        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+    const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
+    const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-        function App() {
-            const [veiculos, setVeiculos] = useState([]);
-            const [form, setForm] = useState({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
-            const [editingId, setEditingId] = useState(null);
-            const [loading, setLoading] = useState(false);
+    const formVazio = {
+      marca: '',
+      modelo: '',
+      ano_fabricacao: '',
+      ano_modelo: '',
+      preco: '',
+      foto_url: ''
+    };
 
-            useEffect(() => { fetchVeiculos(); }, []);
+    function Icon({ name, size = 20 }) {
+      const props = {
+        width: size,
+        height: size,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': true
+      };
 
-            async function fetchVeiculos() {
-                const { data } = await supabaseClient.from('veiculos').select('*').order('id', { ascending: false });
-                if (data) setVeiculos(data);
-            }
+      const icons = {
+        plus: <><path d="M12 5v14M5 12h14" /></>,
+        search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
+        car: <><path d="M5 17h14M6 17v2M18 17v2" /><path d="m4 14 2-6h12l2 6v3H4z" /><circle cx="7.5" cy="14.5" r="1" /><circle cx="16.5" cy="14.5" r="1" /></>,
+        edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+        trash: <><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5" /></>,
+        phone: <><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" /></>,
+        upload: <><path d="M12 16V4M7 9l5-5 5 5" /><path d="M5 20h14" /></>,
+        close: <><path d="M18 6 6 18M6 6l12 12" /></>,
+        check: <><path d="m5 12 4 4L19 6" /></>,
+        grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>
+      };
 
-            function handlePrecoChange(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value === '') {
-                    setForm({ ...form, preco: '' });
-                    return;
-                }
-                let numero = (parseFloat(value) / 100).toFixed(2);
-                let formatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numero).replace('R$', '').trim();
-                setForm({ ...form, preco: formatado });
-            }
+      return <svg {...props}>{icons[name]}</svg>;
+    }
 
-            function handleImageUpload(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        setForm({ ...form, foto_url: reader.result });
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
+    function App() {
+      const [veiculos, setVeiculos] = useState([]);
+      const [form, setForm] = useState(formVazio);
+      const [editingId, setEditingId] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [busca, setBusca] = useState('');
+      const [formAberto, setFormAberto] = useState(false);
+      const [carregandoLista, setCarregandoLista] = useState(true);
+      const [erro, setErro] = useState('');
 
-            async function guardarVeiculo(e) {
-                e.preventDefault();
-                setLoading(true);
-                
-                const precoNumerico = typeof form.preco === 'string' ? parseFloat(form.preco.replace(/\./g, '').replace(',', '.')) : form.preco;
-                const dadosVeiculo = { 
-                    marca: form.marca,
-                    modelo: form.modelo,
-                    ano: `${form.ano_fabricacao}/${form.ano_modelo}`,
-                    preco: precoNumerico,
-                    foto_url: form.foto_url 
-                };
+      useEffect(() => { fetchVeiculos(); }, []);
 
-                if (editingId) {
-                    await supabaseClient.from('veiculos').update(dadosVeiculo).eq('id', editingId);
-                    setEditingId(null);
-                    alert("Veículo atualizado com sucesso!");
-                } else {
-                    await supabaseClient.from('veiculos').insert([dadosVeiculo]);
-                    alert("Veículo guardado com sucesso!");
-                }
+      async function fetchVeiculos() {
+        setCarregandoLista(true);
+        setErro('');
+        const { data, error } = await supabaseClient
+          .from('veiculos')
+          .select('*')
+          .order('id', { ascending: false });
 
-                setForm({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
-                await fetchVeiculos();
-                setLoading(false);
-            }
+        if (error) setErro('Não foi possível carregar os veículos agora.');
+        if (data) setVeiculos(data);
+        setCarregandoLista(false);
+      }
 
-            async function apagarVeiculo(id) {
-                if (confirm("Tem certeza que deseja apagar este veículo?")) {
-                    await supabaseClient.from('veiculos').delete().eq('id', id);
-                    fetchVeiculos();
-                }
-            }
+      const veiculosFiltrados = useMemo(() => {
+        const termo = busca.trim().toLowerCase();
+        if (!termo) return veiculos;
+        return veiculos.filter(v =>
+          `${v.marca || ''} ${v.modelo || ''} ${v.ano || ''}`.toLowerCase().includes(termo)
+        );
+      }, [veiculos, busca]);
 
-            function editarVeiculo(v) {
-                setEditingId(v.id);
-                const anos = v.ano ? v.ano.split('/') : ['', ''];
-                const precoStr = v.preco ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v.preco) : '';
-                setForm({
-                    marca: v.marca || '',
-                    modelo: v.modelo || '',
-                    ano_fabricacao: anos[0] || '',
-                    ano_modelo: anos[1] || '',
-                    preco: precoStr,
-                    foto_url: v.foto_url || ''
-                });
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
+      function handlePrecoChange(e) {
+        const digitos = e.target.value.replace(/\D/g, '');
+        if (!digitos) {
+          setForm(prev => ({ ...prev, preco: '' }));
+          return;
+        }
+        const numero = (Number(digitos) / 100).toFixed(2);
+        const formatado = new Intl.NumberFormat('pt-BR', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        }).format(numero);
+        setForm(prev => ({ ...prev, preco: formatado }));
+      }
 
-            function enviarWhatsApp(veiculo) {
-                const precoFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(veiculo.preco);
-                const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${precoFormatado} e tenho interesse.`;
-                window.open(`https://wa.me/55000000000?text=${encodeURIComponent(texto)}`, '_blank');
-            }
+      function handleImageUpload(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-            return (
-                <div className="max-w-5xl mx-auto p-4 sm:p-6 text-black">
-                    <div className="bg-yellow-400 border-4 border-black rounded-xl shadow-xl p-6 mb-8 text-center">
-                        <h1 className="text-4xl font-black text-black tracking-tight uppercase">Catálogo Crediti</h1>
-                        <p className="text-black mt-2 font-bold text-lg">Os melhores veículos aos melhores preços</p>
-                    </div>
-                    
-                    <div className="bg-white p-6 rounded-xl shadow-md mb-10 border-4 border-black">
-                        <h2 className="text-2xl font-black mb-6 text-black border-b-2 border-black pb-2">
-                            {editingId ? '✏️ Editar Veículo' : '➕ Adicionar Novo Veículo'}
-                        </h2>
-                        <form onSubmit={guardarVeiculo} className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Marca</label>
-                                <input placeholder="Ex: Fiat" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Modelo</label>
-                                <input placeholder="Ex: Uno Mille" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} required />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Ano de Fabricação</label>
-                                <input placeholder="Ex: 2019" type="number" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.ano_fabricacao} onChange={e => setForm({...form, ano_fabricacao: e.target.value})} required />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Ano do Modelo</label>
-                                <input placeholder="Ex: 2020" type="number" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.ano_modelo} onChange={e => setForm({...form, ano_modelo: e.target.value})} required />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Preço (R$)</label>
-                                <input placeholder="39.000,00" className="border-2 border-black p-3 rounded-lg font-bold text-lg outline-none text-green-700" value={form.preco} onChange={handlePrecoChange} required />
-                            </div>
-                            <div className="flex flex-col">
-                                <label className="text-sm font-bold text-black mb-1">Fotografia do Veículo</label>
-                                <input type="file" accept="image/*" onChange={handleImageUpload} className="border-2 border-black p-2.5 rounded-lg font-medium bg-gray-50 cursor-pointer" />
-                            </div>
-                            <button disabled={loading} className="bg-yellow-400 border-2 border-black text-black p-4 rounded-lg font-black text-lg hover:bg-yellow-500 transition-colors md:col-span-2 mt-2 shadow-md">
-                                {loading ? 'A guardar...' : (editingId ? '💾 Atualizar Veículo' : '💾 Gravar Veículo')}
-                            </button>
-                        </form>
-                    </div>
-
-                    <h2 className="text-3xl font-black mb-6 text-black uppercase">🚘 Catálogo de Veículos</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {veiculos.length === 0 && <p className="text-black font-bold col-span-full text-center py-10 bg-white rounded-lg border-2 border-black">Nenhum veículo registado ainda.</p>}
-                        
-                        {veiculos.map(v => (
-                            <div key={v.id} className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-black flex flex-col">
-                                {v.foto_url ? (
-                                    <img src={v.foto_url} alt="Foto do veículo" className="w-full h-56 object-cover border-b-2 border-black" />
-                                ) : (
-                                    <div className="w-full h-56 bg-gray-200 flex items-center justify-center font-bold text-black border-b-2 border-black">Sem Foto</div>
-                                )}
-                                <div className="p-5 flex flex-col flex-grow">
-                                    <h3 className="text-xl font-black text-black uppercase">{v.marca} {v.modelo}</h3>
-                                    <p className="text-black font-bold mb-3">Ano: {v.ano}</p>
-                                    <p className="text-3xl font-black text-green-700 mb-4 mt-auto">R$ {v.preco ? Number(v.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00'}</p>
-                                    
-                                    <div className="space-y-2">
-                                        <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 border-2 border-black text-white py-2.5 px-4 rounded-lg font-black hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
-                                            📲 Partilhar WhatsApp
-                                        </button>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => editarVeiculo(v)} className="w-1/2 bg-yellow-300 border-2 border-black text-black py-2 rounded-lg font-black hover:bg-yellow-400 transition-colors">
-                                                ✏️ Editar
-                                            </button>
-                                            <button onClick={() => apagarVeiculo(v.id)} className="w-1/2 bg-red-500 border-2 border-black text-white py-2 rounded-lg font-black hover:bg-red-600 transition-colors">
-                                                🗑️ Apagar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
+        if (file.size > 4 * 1024 * 1024) {
+          alert('Escolha uma imagem de até 4 MB.');
+          e.target.value = '';
+          return;
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+        const reader = new FileReader();
+        reader.onloadend = () => setForm(prev => ({ ...prev, foto_url: reader.result }));
+        reader.readAsDataURL(file);
+      }
+
+      function abrirNovo() {
+        setEditingId(null);
+        setForm(formVazio);
+        setFormAberto(true);
+        setTimeout(() => document.getElementById('cadastro')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
+
+      function cancelarEdicao() {
+        setEditingId(null);
+        setForm(formVazio);
+        setFormAberto(false);
+      }
+
+      async function guardarVeiculo(e) {
+        e.preventDefault();
+        setLoading(true);
+
+        const precoNumerico = typeof form.preco === 'string'
+          ? parseFloat(form.preco.replace(/\./g, '').replace(',', '.'))
+          : form.preco;
+
+        const dadosVeiculo = {
+          marca: form.marca.trim(),
+          modelo: form.modelo.trim(),
+          ano: `${form.ano_fabricacao}/${form.ano_modelo}`,
+          preco: precoNumerico,
+          foto_url: form.foto_url
+        };
+
+        let result;
+        if (editingId) {
+          result = await supabaseClient.from('veiculos').update(dadosVeiculo).eq('id', editingId);
+        } else {
+          result = await supabaseClient.from('veiculos').insert([dadosVeiculo]);
+        }
+
+        if (result.error) {
+          alert('Não foi possível salvar o veículo. Tente novamente.');
+          setLoading(false);
+          return;
+        }
+
+        setForm(formVazio);
+        setEditingId(null);
+        setFormAberto(false);
+        await fetchVeiculos();
+        setLoading(false);
+      }
+
+      async function apagarVeiculo(id) {
+        if (!confirm('Deseja realmente apagar este veículo?')) return;
+        const { error } = await supabaseClient.from('veiculos').delete().eq('id', id);
+        if (error) {
+          alert('Não foi possível apagar o veículo.');
+          return;
+        }
+        fetchVeiculos();
+      }
+
+      function editarVeiculo(v) {
+        const anos = v.ano ? String(v.ano).split('/') : ['', ''];
+        const precoStr = v.preco
+          ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v.preco)
+          : '';
+
+        setEditingId(v.id);
+        setForm({
+          marca: v.marca || '',
+          modelo: v.modelo || '',
+          ano_fabricacao: anos[0] || '',
+          ano_modelo: anos[1] || '',
+          preco: precoStr,
+          foto_url: v.foto_url || ''
+        });
+        setFormAberto(true);
+        setTimeout(() => document.getElementById('cadastro')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
+
+      function enviarWhatsApp(veiculo) {
+        const precoFormatado = new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(Number(veiculo.preco || 0));
+        const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${precoFormatado} e tenho interesse.`;
+        window.open(`https://wa.me/55000000000?text=${encodeURIComponent(texto)}`, '_blank');
+      }
+
+      return (
+        <div className="min-h-screen pb-16">
+          <header className="glass sticky top-0 z-40 border-b border-black/5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#FDCA01] flex items-center justify-center shrink-0">
+                  <Icon name="car" size={22} />
+                </div>
+                <div className="leading-tight min-w-0">
+                  <div className="font-extrabold tracking-[-.03em] text-lg truncate">Crediti</div>
+                  <div className="text-[11px] text-black/45 font-semibold uppercase tracking-[.16em]">Catálogo de veículos</div>
+                </div>
+              </div>
+
+              <button
+                onClick={abrirNovo}
+                className="h-11 px-4 sm:px-5 rounded-2xl bg-black text-white font-bold text-sm flex items-center gap-2 hover:opacity-85 transition shrink-0"
+              >
+                <Icon name="plus" size={18} />
+                <span className="hidden sm:inline">Novo veículo</span>
+                <span className="sm:hidden">Novo</span>
+              </button>
+            </div>
+          </header>
+
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-7 sm:pt-10">
+            <section className="relative overflow-hidden rounded-[30px] bg-[#FDCA01] p-6 sm:p-9 md:p-11 card-shadow">
+              <div className="absolute -right-20 -top-24 w-72 h-72 rounded-full bg-white/25"></div>
+              <div className="absolute right-20 -bottom-28 w-60 h-60 rounded-full bg-black/[.045]"></div>
+
+              <div className="relative max-w-3xl">
+                <span className="inline-flex items-center h-8 px-3 rounded-full bg-black text-white text-xs font-bold tracking-wide mb-5">
+                  ESTOQUE CREDITI
+                </span>
+                <h1 className="text-[2.1rem] sm:text-5xl md:text-6xl font-extrabold tracking-[-.055em] leading-[.98] max-w-2xl">
+                  Encontre seu próximo veículo.
+                </h1>
+                <p className="mt-4 sm:mt-5 text-black/65 font-medium text-sm sm:text-base max-w-xl leading-relaxed">
+                  Consulte o catálogo, veja valores e fale com a Crediti de forma rápida.
+                </p>
+              </div>
+
+              <div className="relative mt-7 sm:mt-9 flex flex-wrap gap-3">
+                <div className="bg-white/85 rounded-2xl px-4 py-3 min-w-[130px]">
+                  <div className="text-2xl font-extrabold tracking-tight">{veiculos.length}</div>
+                  <div className="text-xs font-semibold text-black/50 mt-0.5">Veículos no catálogo</div>
+                </div>
+                <div className="bg-white/45 rounded-2xl px-4 py-3 min-w-[130px]">
+                  <div className="text-2xl font-extrabold tracking-tight">Online</div>
+                  <div className="text-xs font-semibold text-black/50 mt-0.5">Atualização em tempo real</div>
+                </div>
+              </div>
+            </section>
+
+            {formAberto && (
+              <section id="cadastro" className="scroll-mt-24 mt-7 bg-white rounded-[26px] border border-black/[.06] soft-shadow overflow-hidden">
+                <div className="px-5 sm:px-7 py-5 border-b border-black/[.06] flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[.15em] text-black/40 mb-1">Gerenciar catálogo</p>
+                    <h2 className="text-xl sm:text-2xl font-extrabold tracking-[-.03em]">
+                      {editingId ? 'Editar veículo' : 'Adicionar veículo'}
+                    </h2>
+                  </div>
+                  <button onClick={cancelarEdicao} className="w-10 h-10 rounded-xl bg-[#F5F6F2] flex items-center justify-center hover:bg-black hover:text-white transition">
+                    <Icon name="close" size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={guardarVeiculo} className="p-5 sm:p-7 grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Marca</span>
+                    <input className="field" placeholder="Ex: Fiat" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Modelo</span>
+                    <input className="field" placeholder="Ex: Argo Drive" value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} required />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Ano de fabricação</span>
+                    <input className="field" placeholder="2024" type="number" min="1950" max="2100" value={form.ano_fabricacao} onChange={e => setForm({...form, ano_fabricacao: e.target.value})} required />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Ano do modelo</span>
+                    <input className="field" placeholder="2025" type="number" min="1950" max="2100" value={form.ano_modelo} onChange={e => setForm({...form, ano_modelo: e.target.value})} required />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Preço</span>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-extrabold text-black/40">R$</span>
+                      <input className="field pl-12 font-extrabold" placeholder="39.000,00" inputMode="numeric" value={form.preco} onChange={handlePrecoChange} required />
+                    </div>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-bold block mb-2">Foto do veículo</span>
+                    <div className="relative min-h-[50px] rounded-[14px] border border-dashed border-black/20 bg-[#F8F8F5] flex items-center px-4 gap-3 overflow-hidden">
+                      <Icon name="upload" size={19} />
+                      <span className="text-sm font-semibold text-black/55 truncate">{form.foto_url ? 'Imagem selecionada' : 'Escolher imagem'}</span>
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    </div>
+                  </label>
+
+                  {form.foto_url && (
+                    <div className="md:col-span-2 rounded-2xl overflow-hidden bg-[#F5F6F2] h-44 sm:h-56">
+                      <img src={form.foto_url} alt="Prévia do veículo" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+
+                  <div className="md:col-span-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end pt-1">
+                    <button type="button" onClick={cancelarEdicao} className="h-12 px-5 rounded-2xl bg-[#F3F3EF] font-bold hover:bg-[#EAEAE5] transition">
+                      Cancelar
+                    </button>
+                    <button disabled={loading} className="h-12 px-6 rounded-2xl bg-[#FDCA01] text-black font-extrabold flex items-center justify-center gap-2 hover:brightness-95 disabled:opacity-60 transition">
+                      <Icon name="check" size={18} />
+                      {loading ? 'Salvando...' : (editingId ? 'Salvar alterações' : 'Adicionar ao catálogo')}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
+
+            <section className="mt-10 sm:mt-12">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-6">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[.16em] text-black/40 mb-2">Disponíveis</p>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-[-.04em]">Veículos do catálogo</h2>
+                </div>
+
+                <div className="relative w-full md:w-[360px]">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-black/40"><Icon name="search" size={18} /></div>
+                  <input
+                    className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white border border-black/[.07] outline-none focus:border-black/30 soft-shadow text-sm font-medium"
+                    placeholder="Buscar marca, modelo ou ano"
+                    value={busca}
+                    onChange={e => setBusca(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {erro && <div className="mb-5 p-4 rounded-2xl bg-red-50 text-red-700 font-semibold text-sm">{erro}</div>}
+
+              {carregandoLista ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="bg-white rounded-[24px] overflow-hidden border border-black/[.05] animate-pulse">
+                      <div className="h-56 bg-black/[.05]"></div>
+                      <div className="p-5 space-y-3">
+                        <div className="h-5 bg-black/[.06] rounded-lg w-2/3"></div>
+                        <div className="h-4 bg-black/[.05] rounded-lg w-1/3"></div>
+                        <div className="h-8 bg-black/[.06] rounded-lg w-1/2 mt-6"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : veiculosFiltrados.length === 0 ? (
+                <div className="bg-white rounded-[26px] border border-black/[.06] py-16 px-6 text-center soft-shadow">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-[#FDCA01] flex items-center justify-center mb-4"><Icon name="grid" size={23} /></div>
+                  <h3 className="font-extrabold text-lg">Nenhum veículo encontrado</h3>
+                  <p className="text-black/45 text-sm mt-2">{busca ? 'Tente outra busca.' : 'Adicione o primeiro veículo ao catálogo.'}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                  {veiculosFiltrados.map(v => (
+                    <article key={v.id} className="group bg-white rounded-[24px] overflow-hidden border border-black/[.06] soft-shadow transition duration-200 hover:-translate-y-1 hover:shadow-[0_18px_45px_rgba(18,18,18,.10)] flex flex-col">
+                      <div className="relative h-[230px] bg-[#ECEDE8] overflow-hidden">
+                        {v.foto_url ? (
+                          <img src={v.foto_url} alt={`${v.marca} ${v.modelo}`} className="w-full h-full object-cover group-hover:scale-[1.025] transition duration-500" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-black/30 gap-2">
+                            <Icon name="car" size={34} />
+                            <span className="font-semibold text-sm">Sem foto</span>
+                          </div>
+                        )}
+                        <div className="absolute top-4 left-4 h-8 px-3 rounded-full bg-white/90 backdrop-blur text-xs font-extrabold flex items-center shadow-sm">
+                          {v.ano || 'Ano não informado'}
+                        </div>
+                      </div>
+
+                      <div className="p-5 sm:p-6 flex flex-col flex-1">
+                        <p className="text-xs uppercase tracking-[.14em] font-bold text-black/35 mb-2">{v.marca || 'Veículo'}</p>
+                        <h3 className="text-xl sm:text-[22px] font-extrabold tracking-[-.035em] leading-tight min-h-[54px]">{v.modelo || 'Sem modelo'}</h3>
+
+                        <div className="mt-5 mb-5">
+                          <span className="text-xs font-semibold text-black/40 block mb-1">Valor anunciado</span>
+                          <strong className="text-2xl sm:text-[28px] tracking-[-.04em]">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v.preco || 0))}
+                          </strong>
+                        </div>
+
+                        <button onClick={() => enviarWhatsApp(v)} className="w-full h-12 rounded-2xl bg-black text-white font-extrabold text-sm flex items-center justify-center gap-2 hover:opacity-85 transition">
+                          <Icon name="phone" size={17} />
+                          Tenho interesse
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <button onClick={() => editarVeiculo(v)} className="h-11 rounded-2xl bg-[#F4F4F0] font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#FDCA01] transition">
+                            <Icon name="edit" size={16} /> Editar
+                          </button>
+                          <button onClick={() => apagarVeiculo(v.id)} className="h-11 rounded-2xl bg-[#F4F4F0] font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 hover:text-red-600 transition">
+                            <Icon name="trash" size={16} /> Apagar
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
