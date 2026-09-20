@@ -1,0 +1,41 @@
+name: Aplicar logo Omni exata v4
+
+on:
+  push:
+    paths:
+      - '.github/workflows/use-exact-omni-logo-v4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Montar logo enviada e atualizar catalogo
+        shell: bash
+        run: |
+          cat .tmp/omni-logo-1.b64 .tmp/omni-logo-2.b64 .tmp/omni-logo-3.b64 .tmp/omni-logo-4.b64 .tmp/omni-logo-5.b64 | tr -d '[:space:]' | base64 -d > omni-logo-crediti.png
+          test "$(stat -c%s omni-logo-crediti.png)" -gt 10000
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='<span className="h-8 min-w-[42px] px-1 rounded-lg bg-white/90 flex items-center justify-center shrink-0" title="Omni Financeira"><span className="text-[13px] leading-none font-black italic tracking-[-.08em] text-[#123B6D]">omni</span></span>'
+          new='<span className="h-8 min-w-[46px] px-1 rounded-lg bg-white/90 flex items-center justify-center shrink-0" title="Omni Financeira"><img src="/omni-logo-crediti.png?v=1" alt="Omni Financeira" className="w-10 h-6 object-contain"/></span>'
+          if old not in s:
+              raise SystemExit('bloco Omni atual nao encontrado')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+          grep -q '/omni-logo-crediti.png?v=1' index.html
+      - name: Publicar e limpar temporarios
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html omni-logo-crediti.png
+          git rm -f .tmp/omni-logo-1.b64 .tmp/omni-logo-2.b64 .tmp/omni-logo-3.b64 .tmp/omni-logo-4.b64 .tmp/omni-logo-5.b64
+          git rm -f .github/workflows/use-exact-omni-logo-v3.yml .github/workflows/use-exact-omni-logo-v4.yml
+          git commit -m "Usar logo Omni enviada no catalogo publico"
+          git push
