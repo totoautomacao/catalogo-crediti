@@ -22,7 +22,6 @@
   const DEFAULT_VOL=.22;
   const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const audio=new Audio();
-  if(IS_IOS) audio.crossOrigin='anonymous';
   audio.preload='none';
   audio.playsInline=true;
   let stations=[];
@@ -36,8 +35,6 @@
   let cacheStarted=false;
   let lastVolume=Math.max(.05,Math.min(1,Number(localStorage.getItem(STORAGE_VOL))||DEFAULT_VOL));
   let muted=localStorage.getItem(STORAGE_MUTE)==='1';
-  let appVolume=muted?0:lastVolume;
-  let audioCtx=null,mediaNode=null,gainNode=null;
   audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;
 
   document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(24px + env(safe-area-inset-bottom))';
@@ -52,7 +49,7 @@
     .cr-copy{display:none;min-width:0;max-width:165px}.cr-shell.is-open .cr-copy{display:block}
     .cr-title{font-size:12px;font-weight:800;white-space:nowrap}.cr-status{font-size:10px;color:rgba(0,0,0,.52);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
     .cr-controls{display:none;align-items:center;gap:7px;margin-left:2px}.cr-shell.is-open .cr-controls{display:flex}
-    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;align-items:center;gap:4px}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:flex}.cr-step{width:30px;height:30px;border:0;border-radius:9px;background:#111;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}.cr-pct{min-width:34px;text-align:center;font-size:10px;font-weight:800;color:#333}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}
+    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);white-space:nowrap}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:block}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}
     .cr-bars{display:none;align-items:flex-end;gap:2px;height:15px;margin-left:1px}.cr-shell.is-playing .cr-bars{display:flex}
     .cr-bars i{display:block;width:3px;border-radius:3px;background:#111;animation:crEq .8s ease-in-out infinite alternate}.cr-bars i:nth-child(1){height:6px}.cr-bars i:nth-child(2){height:12px;animation-delay:.14s}.cr-bars i:nth-child(3){height:8px;animation-delay:.28s}
     @keyframes crEq{from{transform:scaleY(.45);opacity:.5}to{transform:scaleY(1);opacity:1}}
@@ -62,60 +59,33 @@
 
   const root=document.createElement('div');
   root.id='crediti-radio-root';
-  root.innerHTML=`<div class="cr-shell" id="crShell"><button class="cr-radio-btn" id="crExpand" aria-label="Abrir Rádio Crediti">📻</button><button class="cr-play" id="crPlay" aria-label="Tocar rádio">▶</button><div class="cr-copy"><div class="cr-title">Rádio Crediti</div><div class="cr-status" id="crStatus">Programação variada</div></div><div class="cr-bars"><i></i><i></i><i></i></div><div class="cr-controls"><button class="cr-mute" id="crMute" aria-label="Silenciar">🔊</button><input class="cr-volume" id="crVolume" type="range" min="0" max="100" step="1" aria-label="Volume da rádio"/><div class="cr-ios-volume"><button class="cr-step" id="crVolDown" aria-label="Diminuir volume">−</button><span class="cr-pct" id="crVolPct">22%</span><button class="cr-step" id="crVolUp" aria-label="Aumentar volume">+</button></div><button class="cr-close" id="crClose" aria-label="Fechar controles">×</button></div></div>`;
+  root.innerHTML=`<div class="cr-shell" id="crShell"><button class="cr-radio-btn" id="crExpand" aria-label="Abrir Rádio Crediti">📻</button><button class="cr-play" id="crPlay" aria-label="Tocar rádio">▶</button><div class="cr-copy"><div class="cr-title">Rádio Crediti</div><div class="cr-status" id="crStatus">Programação variada</div></div><div class="cr-bars"><i></i><i></i><i></i></div><div class="cr-controls"><button class="cr-mute" id="crMute" aria-label="Silenciar">🔊</button><input class="cr-volume" id="crVolume" type="range" min="0" max="100" step="1" aria-label="Volume da rádio"/><span class="cr-ios-volume">Volume: botões do iPhone</span><button class="cr-close" id="crClose" aria-label="Fechar controles">×</button></div></div>`;
   document.body.appendChild(root);if(IS_IOS) root.classList.add('is-ios');
 
-  const shell=document.getElementById('crShell'),btnExpand=document.getElementById('crExpand'),btnPlay=document.getElementById('crPlay'),btnMute=document.getElementById('crMute'),btnClose=document.getElementById('crClose'),volume=document.getElementById('crVolume'),status=document.getElementById('crStatus'),btnVolDown=document.getElementById('crVolDown'),btnVolUp=document.getElementById('crVolUp'),volPct=document.getElementById('crVolPct');
+  const shell=document.getElementById('crShell'),btnExpand=document.getElementById('crExpand'),btnPlay=document.getElementById('crPlay'),btnMute=document.getElementById('crMute'),btnClose=document.getElementById('crClose'),volume=document.getElementById('crVolume'),status=document.getElementById('crStatus');
   volume.value=String(Math.round(lastVolume*100));
   const setStatus=t=>status.textContent=t||'Programação variada';
   const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};
-  function effectiveVolume(){return IS_IOS?appVolume:(audio.muted?0:audio.volume)}
-  async function ensureGain(){
-    if(!IS_IOS)return true;
-    try{
-      const AC=window.AudioContext||window.webkitAudioContext;
-      if(!AC)return false;
-      if(!audioCtx){audioCtx=new AC();mediaNode=audioCtx.createMediaElementSource(audio);gainNode=audioCtx.createGain();mediaNode.connect(gainNode);gainNode.connect(audioCtx.destination)}
-      if(audioCtx.state==='suspended')await audioCtx.resume();
-      gainNode.gain.setValueAtTime(appVolume,audioCtx.currentTime);audio.muted=false;audio.volume=1;return true;
-    }catch(_){return false}
-  }
-  async function applyVolume(v){
-    v=Math.max(0,Math.min(1,Math.round(v*10)/10));
-    appVolume=v;
-    if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}
-    if(IS_IOS){const ok=await ensureGain();if(ok&&gainNode)gainNode.gain.setTargetAtTime(v,audioCtx.currentTime,.015);else audio.muted=v===0}
-    else{audio.volume=v;audio.muted=v===0;volume.value=String(Math.round(v*100))}
-    if(volPct)volPct.textContent=`${Math.round(v*100)}%`;
-    syncMute();
-  }
-  async function corsPlayable(u){
-    if(!IS_IOS)return true;
-    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),2600);
-    try{const r=await fetch(u,{mode:'cors',cache:'no-store',signal:ctl.signal});clearTimeout(timer);ctl.abort();return !!(r&&r.ok)}catch(_){clearTimeout(timer);return false}
-  }
-  function syncMute(){const v=effectiveVolume(),off=v<=.001;btnMute.textContent=off?'🔇':v<.45?'🔉':'🔊';localStorage.setItem(STORAGE_MUTE,off?'1':'0');if(volPct)volPct.textContent=`${Math.round(v*100)}%`}
+  function syncMute(){const off=audio.muted||(!IS_IOS&&audio.volume===0);btnMute.textContent=off?'🔇':(!IS_IOS&&audio.volume<.45?'🔉':'🔊');localStorage.setItem(STORAGE_MUTE,off?'1':'0')}
   function syncPlay(){const playing=!audio.paused&&!audio.ended;shell.classList.toggle('is-playing',playing);btnPlay.textContent=playing?'❚❚':'▶';btnPlay.setAttribute('aria-label',playing?'Pausar rádio':'Tocar rádio')}
 
   function stationScore(s){const txt=((s.name||'')+' '+(s.tags||'')).toLowerCase(),genres=['sertanejo','forro','forró','pop','rock','romant','mpb','flashback','dance','hits','eclet','eclectic','varied','variad','musica','música'],bad=['news','noticia','notícia','talk','jornal','sports','esporte','podcast'];let score=genres.reduce((n,g)=>n+(txt.includes(g)?1:0),0)*120+Math.log1p(Number(s.votes)||0)*14+Math.min(80,(Number(s.bitrate)||0)/3);if(txt.includes('variety')||txt.includes('variad')||txt.includes('eclet'))score+=220;if(txt.includes('hits')||txt.includes('music')||txt.includes('musica')||txt.includes('música'))score+=70;bad.forEach(k=>{if(txt.includes(k))score-=180});return score}
 
-  async function fetchStations(){if(preparing||!navigator.onLine)return false;preparing=true;if(sourceMode==='live')setStatus('Preparando programação…');const query='/json/stations/search?countrycode=BR&hidebroken=true&is_https=true&order=votes&reverse=true&limit=180';let data=null;for(const host of API_HOSTS){try{const r=await fetch(host+query,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();if(Array.isArray(j)&&j.length){data=j;break}}catch(_){}}if(data){stations=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase();return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320}).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,24);if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live'&&!IS_IOS)loadLive(false)}}preparing=false;return prepared}
+  async function fetchStations(){if(preparing||!navigator.onLine)return false;preparing=true;if(sourceMode==='live')setStatus('Preparando programação…');const query='/json/stations/search?countrycode=BR&hidebroken=true&is_https=true&order=votes&reverse=true&limit=180';let data=null;for(const host of API_HOSTS){try{const r=await fetch(host+query,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();if(Array.isArray(j)&&j.length){data=j;break}}catch(_){}}if(data){stations=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase();return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320}).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,24);if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live')loadLive(false)}}preparing=false;return prepared}
   const stationUrl=s=>(s&&(s.url_resolved||s.url)||'').trim();
-  async function loadLive(autoplay,attempt=0){if(!stations.length)return false;if(attempt>=Math.min(stations.length,8)){setStatus('Use os botões do aparelho para o volume desta estação');return false}const s=stations[currentIndex],u=stationUrl(s);if(!u)return false;if(IS_IOS&&!(await corsPlayable(u))){currentIndex=(currentIndex+1)%stations.length;return loadLive(autoplay,attempt+1)}sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}return true}
+  function loadLive(autoplay){const s=stations[currentIndex],u=stationUrl(s);if(!u)return;sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}if(autoplay)audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}
 
   async function cachedTracks(){if(!('caches'in window))return[];try{const cache=await caches.open(OFFLINE_CACHE),out=[];for(const t of OFFLINE_PLAYLIST){if(await cache.match(t.url))out.push(t)}return out}catch(_){return[]}}
   async function cacheOfflinePlaylist(){if(cacheStarted||!navigator.onLine||!('caches'in window))return;cacheStarted=true;try{const cache=await caches.open(OFFLINE_CACHE);let done=0;for(const t of OFFLINE_PLAYLIST){try{const existing=await cache.match(t.url);if(existing){done++;continue}const req=new Request(t.url,{mode:'no-cors',credentials:'omit',cache:'no-store'}),res=await fetch(req);if(res&&(res.ok||res.type==='opaque')){await cache.put(req,res.clone());done++}}catch(_){}if(sourceMode==='live'&&audio.paused&&expanded)setStatus(`Offline ${done}/50 preparado`);await new Promise(r=>setTimeout(r,180))}}catch(_){}cacheStarted=false}
-  async function loadOffline(autoplay,advance=false){const available=await cachedTracks();if(!available.length){setStatus('Offline ainda não baixado');syncPlay();return false}if(advance)offlineIndex=(offlineIndex+1)%available.length;else offlineIndex=Math.min(offlineIndex,available.length-1);const t=available[offlineIndex];sourceMode='offline';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=t.url;audio.load();setStatus(`Offline • ${t.title}`);setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:'Rádio Crediti Offline',album:'Playlist grátis CC0'})}catch(_){}}if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir offline'))}return true}
+  async function loadOffline(autoplay,advance=false){const available=await cachedTracks();if(!available.length){setStatus('Offline ainda não baixado');syncPlay();return false}if(advance)offlineIndex=(offlineIndex+1)%available.length;else offlineIndex=Math.min(offlineIndex,available.length-1);const t=available[offlineIndex];sourceMode='offline';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=t.url;audio.load();setStatus(`Offline • ${t.title}`);setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:'Rádio Crediti Offline',album:'Playlist grátis CC0'})}catch(_){}}if(autoplay)audio.play().catch(()=>setStatus('Toque em Play para ouvir offline'));return true}
   async function switchToOffline(){const wasPlaying=!audio.paused;await loadOffline(wasPlaying,false);if(!wasPlaying)syncPlay()}
   async function switchToLive(){const wasPlaying=!audio.paused;if(!prepared)await fetchStations();if(prepared)loadLive(wasPlaying)}
   function tryNextLive(){if(!navigator.onLine){switchToOffline();return}if(!stations.length){fetchStations();return}currentIndex=(currentIndex+1)%stations.length;setStatus('Buscando outra programação…');loadLive(!audio.paused)}
 
   btnExpand.addEventListener('click',()=>setOpen(!expanded));btnClose.addEventListener('click',()=>setOpen(false));
-  btnPlay.addEventListener('click',async()=>{setOpen(true);if(!audio.paused){audio.pause();return}if(!navigator.onLine){await loadOffline(false,false);if(IS_IOS)await ensureGain();try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir offline')}return}const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)await loadLive(false);if(IS_IOS)await ensureGain();audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir')}}else{const ok=await loadOffline(true,false);if(!ok)setStatus('Rádio indisponível no momento')}});
-  btnMute.addEventListener('click',async()=>{const v=effectiveVolume();if(v<=.001)await applyVolume(lastVolume||DEFAULT_VOL);else{lastVolume=v;await applyVolume(0)}});
-  volume.addEventListener('input',async()=>{const v=Math.max(0,Math.min(1,Number(volume.value)/100));await applyVolume(v)});
-  if(btnVolDown)btnVolDown.addEventListener('click',async()=>{await applyVolume(effectiveVolume()-.1)});
-  if(btnVolUp)btnVolUp.addEventListener('click',async()=>{await applyVolume(effectiveVolume()+.1)});
+  btnPlay.addEventListener('click',async()=>{setOpen(true);if(!audio.paused){audio.pause();return}if(!navigator.onLine){await loadOffline(true,false);return}const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)loadLive(false);audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir')}}else{const ok=await loadOffline(true,false);if(!ok)setStatus('Rádio indisponível no momento')}});
+  btnMute.addEventListener('click',()=>{if(IS_IOS){audio.muted=!audio.muted}else if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100));audio.muted=false}else{lastVolume=audio.volume;audio.volume=0;volume.value='0';audio.muted=true}syncMute()});
+  volume.addEventListener('input',()=>{if(IS_IOS){setStatus('No iPhone, ajuste o volume pelos botões laterais');return}const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;audio.muted=v===0;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});
   audio.addEventListener('play',()=>{syncPlay();if(sourceMode==='offline'){const t=OFFLINE_PLAYLIST.find(x=>x.url===audio.src);setStatus(`Offline • ${t?.title||'playlist variada'}`)}else setStatus('Tocando • qualidade alta')});
   audio.addEventListener('pause',()=>{syncPlay();if(switching)return;if(sourceMode==='offline')setStatus('Offline pausado • toque para continuar');else if(prepared)setStatus('Pausado • toque para continuar')});
   audio.addEventListener('waiting',()=>setStatus(sourceMode==='offline'?'Abrindo música offline…':'Conectando à rádio…'));
@@ -126,6 +96,6 @@
   window.addEventListener('offline',()=>switchToOffline());
   window.addEventListener('online',()=>{cacheOfflinePlaylist();if(sourceMode==='offline')switchToLive()});
   if('mediaSession'in navigator){try{navigator.mediaSession.setActionHandler('play',()=>btnPlay.click());navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('nexttrack',()=>sourceMode==='offline'?loadOffline(true,true):tryNextLive())}catch(_){}}
-  if(volPct)volPct.textContent=`${Math.round(effectiveVolume()*100)}%`;syncMute();syncPlay();setOpen(false);
+  syncMute();syncPlay();setOpen(false);
   if(navigator.onLine){fetchStations();setTimeout(cacheOfflinePlaylist,4500)}else{sourceMode='offline';cachedTracks().then(list=>setStatus(list.length?`Offline • ${list.length} músicas salvas`:'Offline ainda não baixado'))}
 })();
