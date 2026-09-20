@@ -10,21 +10,20 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100 font-sans text-black">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
         const { createClient } = supabase;
 
-        // Configuração automática das suas credenciais
         const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
         const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
         const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
         function App() {
             const [veiculos, setVeiculos] = useState([]);
-            const [form, setForm] = useState({ marca: '', modelo: '', ano: '', preco: '', foto_url: '' });
+            const [form, setForm] = useState({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
             const [loading, setLoading] = useState(false);
 
             useEffect(() => { fetchVeiculos(); }, []);
@@ -34,13 +33,46 @@
                 if (data) setVeiculos(data);
             }
 
+            // Formatação automática do preço enquanto o utilizador digita (Ex: 39.000,00)
+            function handlePrecoChange(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value === '') {
+                    setForm({ ...form, preco: '' });
+                    return;
+                }
+                let numero = (parseFloat(value) / 100).toFixed(2);
+                let formatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numero).replace('R$', '').trim();
+                setForm({ ...form, preco: formatado });
+            }
+
+            // Converte a imagem carregada do computador para texto (Base64) para guardar direto
+            function handleImageUpload(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setForm({ ...form, foto_url: reader.result });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
             async function adicionarVeiculo(e) {
                 e.preventDefault();
                 setLoading(true);
-                const precoFormatado = parseFloat(form.preco.replace(/\./g, '').replace(',', '.'));
                 
-                await supabaseClient.from('veiculos').insert([{ ...form, preco: precoFormatado }]);
-                setForm({ marca: '', modelo: '', ano: '', preco: '', foto_url: '' });
+                // Converte a string formatada em número puro para guardar na base de dados
+                const precoNumerico = parseFloat(form.preco.replace(/\./g, '').replace(',', '.'));
+                
+                await supabaseClient.from('veiculos').insert([{ 
+                    marca: form.marca,
+                    modelo: form.modelo,
+                    ano: `${form.ano_fabricacao}/${form.ano_modelo}`, // Guarda combinado ou ajusta conforme a tabela
+                    preco: precoNumerico,
+                    foto_url: form.foto_url 
+                }]);
+
+                setForm({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
                 await fetchVeiculos();
                 setLoading(false);
                 alert("Veículo guardado com sucesso!");
@@ -56,58 +88,64 @@
             }
 
             return (
-                <div className="max-w-5xl mx-auto p-4 sm:p-6">
-                    <div className="bg-blue-900 rounded-xl shadow-lg p-6 mb-8 text-center">
-                        <h1 className="text-4xl font-extrabold text-white tracking-tight">Catálogo Crediti</h1>
-                        <p className="text-blue-200 mt-2 text-lg">Os melhores veículos aos melhores preços</p>
+                <div className="max-w-5xl mx-auto p-4 sm:p-6 text-black">
+                    {/* Cabeçalho nas cores Amarelo Crediti e Preto */}
+                    <div className="bg-yellow-400 border-4 border-black rounded-xl shadow-xl p-6 mb-8 text-center">
+                        <h1 className="text-4xl font-black text-black tracking-tight uppercase">Catálogo Crediti</h1>
+                        <p className="text-black mt-2 font-bold text-lg">Os melhores veículos aos melhores preços</p>
                     </div>
                     
-                    <div className="bg-white p-6 rounded-xl shadow-md mb-10 border-t-4 border-blue-600">
-                        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">➕ Adicionar Veículo</h2>
+                    {/* Formulário */}
+                    <div className="bg-white p-6 rounded-xl shadow-md mb-10 border-4 border-black">
+                        <h2 className="text-2xl font-black mb-6 text-black border-b-2 border-black pb-2">➕ Adicionar Novo Veículo</h2>
                         <form onSubmit={adicionarVeiculo} className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="flex flex-col">
-                                <label className="text-sm font-semibold text-gray-600 mb-1">Marca</label>
-                                <input placeholder="Ex: Fiat" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
+                                <label className="text-sm font-bold text-black mb-1">Marca</label>
+                                <input placeholder="Ex: Fiat" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
                             </div>
                             <div className="flex flex-col">
-                                <label className="text-sm font-semibold text-gray-600 mb-1">Modelo</label>
-                                <input placeholder="Ex: Uno Mille" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} required />
+                                <label className="text-sm font-bold text-black mb-1">Modelo</label>
+                                <input placeholder="Ex: Uno Mille" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} required />
                             </div>
                             <div className="flex flex-col">
-                                <label className="text-sm font-semibold text-gray-600 mb-1">Ano</label>
-                                <input placeholder="Ex: 2020" type="number" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.ano} onChange={e => setForm({...form, ano: e.target.value})} required />
+                                <label className="text-sm font-bold text-black mb-1">Ano de Fabricação</label>
+                                <input placeholder="Ex: 2019" type="number" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.ano_fabricacao} onChange={e => setForm({...form, ano_fabricacao: e.target.value})} required />
                             </div>
                             <div className="flex flex-col">
-                                <label className="text-sm font-semibold text-gray-600 mb-1">Preço (R$)</label>
-                                <input placeholder="Ex: 39000,00" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.preco} onChange={e => setForm({...form, preco: e.target.value})} required />
+                                <label className="text-sm font-bold text-black mb-1">Ano do Modelo</label>
+                                <input placeholder="Ex: 2020" type="number" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.ano_modelo} onChange={e => setForm({...form, ano_modelo: e.target.value})} required />
                             </div>
-                            <div className="flex flex-col md:col-span-2">
-                                <label className="text-sm font-semibold text-gray-600 mb-1">Link da Fotografia</label>
-                                <input placeholder="Cole o link da imagem aqui" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.foto_url} onChange={e => setForm({...form, foto_url: e.target.value})} required />
+                            <div className="flex flex-col">
+                                <label className="text-sm font-bold text-black mb-1">Preço (R$)</label>
+                                <input placeholder="39.000,00" className="border-2 border-black p-3 rounded-lg font-bold text-lg outline-none text-green-700" value={form.preco} onChange={handlePrecoChange} required />
                             </div>
-                            <button disabled={loading} className="bg-blue-600 text-white p-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors md:col-span-2 mt-2 shadow-md">
+                            <div className="flex flex-col">
+                                <label className="text-sm font-bold text-black mb-1">Fotografia do Veículo</label>
+                                <input type="file" accept="image/*" onChange={handleImageUpload} className="border-2 border-black p-2.5 rounded-lg font-medium bg-gray-50 cursor-pointer" required />
+                            </div>
+                            <button disabled={loading} className="bg-yellow-400 border-2 border-black text-black p-4 rounded-lg font-black text-lg hover:bg-yellow-500 transition-colors md:col-span-2 mt-2 shadow-md">
                                 {loading ? 'A guardar...' : '💾 Gravar Veículo'}
                             </button>
                         </form>
                     </div>
 
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800">🚘 Nossa Montra</h2>
+                    <h2 className="text-3xl font-black mb-6 text-black uppercase">🚘 Nossa Montra</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {veiculos.length === 0 && <p className="text-gray-500 col-span-full text-center py-10 bg-white rounded-lg border">Nenhum veículo registado ainda.</p>}
+                        {veiculos.length === 0 && <p className="text-black font-bold col-span-full text-center py-10 bg-white rounded-lg border-2 border-black">Nenhum veículo registado ainda.</p>}
                         
                         {veiculos.map(v => (
-                            <div key={v.id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow flex flex-col">
+                            <div key={v.id} className="bg-white rounded-xl shadow-lg overflow-hidden border-2 border-black flex flex-col">
                                 {v.foto_url ? (
-                                    <img src={v.foto_url} alt="Foto do veículo" className="w-full h-56 object-cover" />
+                                    <img src={v.foto_url} alt="Foto do veículo" className="w-full h-56 object-cover border-b-2 border-black" />
                                 ) : (
-                                    <div className="w-full h-56 bg-gray-200 flex items-center justify-center text-gray-400">Sem Foto</div>
+                                    <div className="w-full h-56 bg-gray-200 flex items-center justify-center font-bold text-black border-b-2 border-black">Sem Foto</div>
                                 )}
                                 <div className="p-5 flex flex-col flex-grow">
-                                    <h3 className="text-xl font-black text-gray-800 uppercase">{v.marca} {v.modelo}</h3>
-                                    <p className="text-gray-500 mb-3 font-medium">Ano: {v.ano}</p>
-                                    <p className="text-3xl font-extrabold text-green-600 mb-6 mt-auto">{formatarMoeda(v.preco)}</p>
+                                    <h3 className="text-xl font-black text-black uppercase">{v.marca} {v.modelo}</h3>
+                                    <p className="text-black font-bold mb-3">Ano: {v.ano}</p>
+                                    <p className="text-3xl font-black text-green-700 mb-6 mt-auto">R$ {v.preco ? Number(v.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00'}</p>
                                     
-                                    <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 text-white py-3 px-4 rounded-lg font-bold hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
+                                    <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 border-2 border-black text-white py-3 px-4 rounded-lg font-black hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                                           <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
                                         </svg>
