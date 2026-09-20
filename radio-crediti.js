@@ -36,11 +36,11 @@
   let muted=localStorage.getItem(STORAGE_MUTE)==='1';
   audio.volume=muted?0:lastVolume;
 
-  document.body.style.paddingBottom='calc(145px + env(safe-area-inset-bottom))';
+  document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(72px + env(safe-area-inset-bottom))';
 
   const style=document.createElement('style');
   style.textContent=`
-    #crediti-radio-root{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:90;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111}
+    #crediti-radio-root{position:fixed;left:10px;bottom:calc(8px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px);z-index:90;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111}
     .cr-shell{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border:1px solid rgba(0,0,0,.08);box-shadow:0 12px 34px rgba(0,0,0,.14);border-radius:18px;padding:7px;max-width:calc(100vw - 28px);transition:.2s ease}
     .cr-radio-btn,.cr-play,.cr-mute,.cr-close{border:0;outline:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
     .cr-radio-btn{width:42px;height:42px;border-radius:14px;background:#FDCA01;font-size:21px;flex:0 0 auto}
