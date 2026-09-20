@@ -101,20 +101,7 @@
 
   async function fetchStations(){if(preparing||!navigator.onLine)return false;preparing=true;if(sourceMode==='live')setStatus('Preparando programação…');const query='/json/stations/search?countrycode=BR&hidebroken=true&is_https=true&order=votes&reverse=true&limit=180';let data=null;for(const host of API_HOSTS){try{const r=await fetch(host+query,{cache:'no-store'});if(!r.ok)continue;const j=await r.json();if(Array.isArray(j)&&j.length){data=j;break}}catch(_){}}if(data){stations=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase();return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320}).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,24);if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live'&&!IS_IOS)loadLive(false)}}preparing=false;return prepared}
   const stationUrl=s=>(s&&(s.url_resolved||s.url)||'').trim();
-  async function loadLive(autoplay,attempt=0){
-    if(!stations.length)return false;
-    const s=stations[currentIndex];
-    const original=stationUrl(s);
-    const u=IS_IOS?`/api/radio?i=${currentIndex}&t=${Date.now()}`:original;
-    if(!u)return false;
-    sourceMode='live';switching=true;
-    audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;
-    audio.src=u;audio.load();
-    setTimeout(()=>switching=false,420);
-    if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}
-    if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}
-    return true
-  }
+  async function loadLive(autoplay,attempt=0){if(!stations.length)return false;if(attempt>=Math.min(stations.length,8)){setStatus('Use os botões do aparelho para o volume desta estação');return false}const s=stations[currentIndex],u=stationUrl(s);if(!u)return false;if(IS_IOS&&!(await corsPlayable(u))){currentIndex=(currentIndex+1)%stations.length;return loadLive(autoplay,attempt+1)}sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}return true}
 
   async function cachedTracks(){if(!('caches'in window))return[];try{const cache=await caches.open(OFFLINE_CACHE),out=[];for(const t of OFFLINE_PLAYLIST){if(await cache.match(t.url))out.push(t)}return out}catch(_){return[]}}
   async function cacheOfflinePlaylist(){if(cacheStarted||!navigator.onLine||!('caches'in window))return;cacheStarted=true;try{const cache=await caches.open(OFFLINE_CACHE);let done=0;for(const t of OFFLINE_PLAYLIST){try{const existing=await cache.match(t.url);if(existing){done++;continue}const req=new Request(t.url,{mode:'no-cors',credentials:'omit',cache:'no-store'}),res=await fetch(req);if(res&&(res.ok||res.type==='opaque')){await cache.put(req,res.clone());done++}}catch(_){}if(sourceMode==='live'&&audio.paused&&expanded)setStatus(`Offline ${done}/50 preparado`);await new Promise(r=>setTimeout(r,180))}}catch(_){}cacheStarted=false}
