@@ -1,0 +1,60 @@
+name: Tornar todos os campos opcionais
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/make-all-fields-optional.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Ajustar formulario e salvamento
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Nenhum campo do formulário deve disparar validação obrigatória do navegador.
+          s = re.sub(r'\srequired(?=(?:\s|/?>))', '', s)
+
+          # Helpers para salvar campos numéricos vazios como NULL, e não zero.
+          marker = "const toNumber=v=>Number(String(v||'').replace(/\\./g,'').replace(',','.'))||0;"
+          helpers = marker + "\nconst numeroOpcional=v=>String(v??'').trim()===''?null:Number(v);\nconst valorOpcional=v=>String(v??'').trim()===''?null:toNumber(v);"
+          if 'const numeroOpcional=' not in s:
+              s = s.replace(marker, helpers)
+
+          old = "const base={categoria:form.categoria,placa:form.placa.trim()?form.placa.trim().toUpperCase():null,marca:form.marca.trim(),modelo:form.modelo.trim(),versao:form.versao.trim(),ano_fabricacao:Number(form.ano_fabricacao),ano_modelo:Number(form.ano_modelo),nosso_valor:toNumber(form.nosso_valor),valor_lojista:toNumber(form.valor_lojista),quilometragem:toNumber(form.quilometragem),descricao:form.descricao.trim(),fipe_marca_codigo:form.fipe_marca_codigo||null,fipe_modelo_codigo:form.fipe_modelo_codigo||null,fipe_ano_codigo:form.fipe_ano_codigo||null};"
+          new = "const base={categoria:form.categoria?.trim()||null,placa:form.placa?.trim()?form.placa.trim().toUpperCase():null,marca:form.marca?.trim()||null,modelo:form.modelo?.trim()||null,versao:form.versao?.trim()||null,ano_fabricacao:numeroOpcional(form.ano_fabricacao),ano_modelo:numeroOpcional(form.ano_modelo),nosso_valor:valorOpcional(form.nosso_valor),valor_lojista:valorOpcional(form.valor_lojista),quilometragem:valorOpcional(form.quilometragem),descricao:form.descricao?.trim()||null,fipe_marca_codigo:form.fipe_marca_codigo||null,fipe_modelo_codigo:form.fipe_modelo_codigo||null,fipe_ano_codigo:form.fipe_ano_codigo||null};"
+          if old not in s:
+              raise SystemExit('Trecho de salvamento esperado não encontrado; abortando para não alterar errado.')
+          s = s.replace(old, new)
+
+          # Melhorar a exibição de registros incompletos sem mostrar null/0 indevidos.
+          s = s.replace("<h3 className=\"text-xl font-extrabold mt-1\">{v.marca} {v.modelo}</h3>", "<h3 className=\"text-xl font-extrabold mt-1\">{[v.marca,v.modelo].filter(Boolean).join(' ')||'Veículo sem identificação'}</h3>")
+          s = s.replace("<span className=\"px-3 py-2 rounded-full bg-[#F5F6F2]\">{v.ano_fabricacao}/{v.ano_modelo}</span>", "{(v.ano_fabricacao||v.ano_modelo)&&<span className=\"px-3 py-2 rounded-full bg-[#F5F6F2]\">{v.ano_fabricacao||'—'}/{v.ano_modelo||'—'}</span>}")
+          s = s.replace("<div className=\"text-2xl font-extrabold\">{dinheiro(v.nosso_valor)}</div>", "<div className=\"text-2xl font-extrabold\">{Number(v.nosso_valor||0)>0?dinheiro(v.nosso_valor):'Não informado'}</div>")
+
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Publicar alteração
+        run: |
+          if git diff --quiet; then
+            echo 'Nenhuma alteração necessária.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Tornar todos os campos do cadastro opcionais'
+          git push
