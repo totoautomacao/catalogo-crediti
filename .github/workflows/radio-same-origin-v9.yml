@@ -1,0 +1,28 @@
+name: Aplicar proxy Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/radio-same-origin-v9.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar ajuste same-origin
+        run: python3 scripts/radio_same_origin_v8.py
+      - name: Validar
+        run: |
+          grep -q '/api/radio?i=' radio-crediti.js
+          grep -q 'radio-crediti.js?v=8' index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Corrigir volume real da Radio Crediti no iPhone"
+          git push
