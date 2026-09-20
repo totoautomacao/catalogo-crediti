@@ -1,0 +1,56 @@
+name: Corrigir botao compartilhar catalogo no mobile
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-share-catalog-button-v3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ajustar cabecalho interno e evitar cache do HTML
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          new_header=''' <header className="glass sticky top-0 z-40 border-b border-black/5"><div className="max-w-7xl mx-auto px-4 sm:px-6 py-2"><div className="min-h-14 flex items-center justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><div className="w-10 h-10 rounded-2xl bg-[#FDCA01] flex items-center justify-center flex-none"><Icon name="car"/></div><div className="min-w-0"><b className="text-lg">Crediti</b><div className="text-[11px] uppercase tracking-[.15em] text-black/45 font-semibold">Catálogo de veículos</div></div></div>{CREDITI_MODO_CLIENTE?<button onClick={falarWhatsappGeral} className="h-11 px-3 sm:px-4 rounded-2xl bg-black text-white font-bold flex items-center gap-2 flex-none"><Icon name="phone" size={18}/><span className="hidden sm:inline">Falar com vendedor</span><span className="sm:hidden">WhatsApp</span></button>:<><div className="hidden sm:flex items-center gap-2 flex-none"><button onClick={compartilharCatalogoCompleto} className="h-11 px-4 rounded-2xl bg-[#FDCA01] text-black font-extrabold flex items-center gap-2"><span className="text-lg leading-none">↗</span> Compartilhar catálogo</button><button onClick={abrirNovo} className="h-11 px-4 rounded-2xl bg-black text-white font-bold flex items-center gap-2"><Icon name="plus" size={18}/> Novo veículo</button></div><button onClick={abrirNovo} className="sm:hidden h-11 px-4 rounded-2xl bg-black text-white font-bold flex items-center gap-2 flex-none"><Icon name="plus" size={18}/> Novo veículo</button></>}</div>{!CREDITI_MODO_CLIENTE&&<button onClick={compartilharCatalogoCompleto} className="sm:hidden mt-2 w-full h-11 rounded-2xl bg-[#FDCA01] text-black font-extrabold flex items-center justify-center gap-2"><span className="text-lg leading-none">↗</span> Compartilhar catálogo</button>}</div></header>'''
+
+          pattern=r' <header className="glass sticky top-0 z-40 border-b border-black/5">.*?</header>\n <main'
+          ns,n=re.subn(pattern,new_header+'\n <main',s,count=1,flags=re.S)
+          if n!=1:
+              raise SystemExit(f'cabecalho nao encontrado ou substituicao ambigua: {n}')
+          p.write_text(ns,encoding='utf-8')
+
+          sw=Path('sw.js')
+          if sw.exists():
+              t=sw.read_text(encoding='utf-8')
+              t=re.sub(r"const CACHE='catalogo-crediti-v\d+';","const CACHE='catalogo-crediti-v8';",t)
+              sw.write_text(t,encoding='utf-8')
+
+          Path('_headers').write_text('''/\n  Cache-Control: no-cache, no-store, must-revalidate\n/index.html\n  Cache-Control: no-cache, no-store, must-revalidate\n''',encoding='utf-8')
+          PY
+
+      - name: Validar
+        run: |
+          grep -q "Compartilhar catálogo" index.html
+          grep -q "sm:hidden mt-2 w-full" index.html
+          grep -q "catalogo-crediti-v8" sw.js
+          grep -q "no-cache, no-store" _headers
+
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js _headers
+          git commit -m "Exibir compartilhar catalogo no topo mobile e evitar cache antigo"
+          git push
