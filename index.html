@@ -24,6 +24,7 @@
         function App() {
             const [veiculos, setVeiculos] = useState([]);
             const [form, setForm] = useState({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
+            const [editingId, setEditingId] = useState(null);
             const [loading, setLoading] = useState(false);
 
             useEffect(() => { fetchVeiculos(); }, []);
@@ -33,7 +34,6 @@
                 if (data) setVeiculos(data);
             }
 
-            // Formatação automática do preço enquanto o utilizador digita (Ex: 39.000,00)
             function handlePrecoChange(e) {
                 let value = e.target.value.replace(/\D/g, '');
                 if (value === '') {
@@ -45,7 +45,6 @@
                 setForm({ ...form, preco: formatado });
             }
 
-            // Converte a imagem carregada do computador para texto (Base64) para guardar direto
             function handleImageUpload(e) {
                 const file = e.target.files[0];
                 if (file) {
@@ -57,48 +56,73 @@
                 }
             }
 
-            async function adicionarVeiculo(e) {
+            async function guardarVeiculo(e) {
                 e.preventDefault();
                 setLoading(true);
                 
-                // Converte a string formatada em número puro para guardar na base de dados
-                const precoNumerico = parseFloat(form.preco.replace(/\./g, '').replace(',', '.'));
-                
-                await supabaseClient.from('veiculos').insert([{ 
+                const precoNumerico = typeof form.preco === 'string' ? parseFloat(form.preco.replace(/\./g, '').replace(',', '.')) : form.preco;
+                const dadosVeiculo = { 
                     marca: form.marca,
                     modelo: form.modelo,
-                    ano: `${form.ano_fabricacao}/${form.ano_modelo}`, // Guarda combinado ou ajusta conforme a tabela
+                    ano: `${form.ano_fabricacao}/${form.ano_modelo}`,
                     preco: precoNumerico,
                     foto_url: form.foto_url 
-                }]);
+                };
+
+                if (editingId) {
+                    await supabaseClient.from('veiculos').update(dadosVeiculo).eq('id', editingId);
+                    setEditingId(null);
+                    alert("Veículo atualizado com sucesso!");
+                } else {
+                    await supabaseClient.from('veiculos').insert([dadosVeiculo]);
+                    alert("Veículo guardado com sucesso!");
+                }
 
                 setForm({ marca: '', modelo: '', ano_fabricacao: '', ano_modelo: '', preco: '', foto_url: '' });
                 await fetchVeiculos();
                 setLoading(false);
-                alert("Veículo guardado com sucesso!");
             }
 
-            function formatarMoeda(valor) {
-                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+            async function apagarVeiculo(id) {
+                if (confirm("Tem certeza que deseja apagar este veículo?")) {
+                    await supabaseClient.from('veiculos').delete().eq('id', id);
+                    fetchVeiculos();
+                }
+            }
+
+            function editarVeiculo(v) {
+                setEditingId(v.id);
+                const anos = v.ano ? v.ano.split('/') : ['', ''];
+                const precoStr = v.preco ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(v.preco) : '';
+                setForm({
+                    marca: v.marca || '',
+                    modelo: v.modelo || '',
+                    ano_fabricacao: anos[0] || '',
+                    ano_modelo: anos[1] || '',
+                    preco: precoStr,
+                    foto_url: v.foto_url || ''
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
 
             function enviarWhatsApp(veiculo) {
-                const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${formatarMoeda(veiculo.preco)} e tenho interesse.`;
+                const precoFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(veiculo.preco);
+                const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${precoFormatado} e tenho interesse.`;
                 window.open(`https://wa.me/55000000000?text=${encodeURIComponent(texto)}`, '_blank');
             }
 
             return (
                 <div className="max-w-5xl mx-auto p-4 sm:p-6 text-black">
-                    {/* Cabeçalho nas cores Amarelo Crediti e Preto */}
                     <div className="bg-yellow-400 border-4 border-black rounded-xl shadow-xl p-6 mb-8 text-center">
                         <h1 className="text-4xl font-black text-black tracking-tight uppercase">Catálogo Crediti</h1>
                         <p className="text-black mt-2 font-bold text-lg">Os melhores veículos aos melhores preços</p>
                     </div>
                     
-                    {/* Formulário */}
                     <div className="bg-white p-6 rounded-xl shadow-md mb-10 border-4 border-black">
-                        <h2 className="text-2xl font-black mb-6 text-black border-b-2 border-black pb-2">➕ Adicionar Novo Veículo</h2>
-                        <form onSubmit={adicionarVeiculo} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <h2 className="text-2xl font-black mb-6 text-black border-b-2 border-black pb-2">
+                            {editingId ? '✏️ Editar Veículo' : '➕ Adicionar Novo Veículo'}
+                        </h2>
+                        <form onSubmit={guardarVeiculo} className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="flex flex-col">
                                 <label className="text-sm font-bold text-black mb-1">Marca</label>
                                 <input placeholder="Ex: Fiat" className="border-2 border-black p-3 rounded-lg font-medium outline-none" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
@@ -121,15 +145,15 @@
                             </div>
                             <div className="flex flex-col">
                                 <label className="text-sm font-bold text-black mb-1">Fotografia do Veículo</label>
-                                <input type="file" accept="image/*" onChange={handleImageUpload} className="border-2 border-black p-2.5 rounded-lg font-medium bg-gray-50 cursor-pointer" required />
+                                <input type="file" accept="image/*" onChange={handleImageUpload} className="border-2 border-black p-2.5 rounded-lg font-medium bg-gray-50 cursor-pointer" />
                             </div>
                             <button disabled={loading} className="bg-yellow-400 border-2 border-black text-black p-4 rounded-lg font-black text-lg hover:bg-yellow-500 transition-colors md:col-span-2 mt-2 shadow-md">
-                                {loading ? 'A guardar...' : '💾 Gravar Veículo'}
+                                {loading ? 'A guardar...' : (editingId ? '💾 Atualizar Veículo' : '💾 Gravar Veículo')}
                             </button>
                         </form>
                     </div>
 
-                    <h2 className="text-3xl font-black mb-6 text-black uppercase">🚘 Nossa Montra</h2>
+                    <h2 className="text-3xl font-black mb-6 text-black uppercase">🚘 Catálogo de Veículos</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {veiculos.length === 0 && <p className="text-black font-bold col-span-full text-center py-10 bg-white rounded-lg border-2 border-black">Nenhum veículo registado ainda.</p>}
                         
@@ -143,14 +167,21 @@
                                 <div className="p-5 flex flex-col flex-grow">
                                     <h3 className="text-xl font-black text-black uppercase">{v.marca} {v.modelo}</h3>
                                     <p className="text-black font-bold mb-3">Ano: {v.ano}</p>
-                                    <p className="text-3xl font-black text-green-700 mb-6 mt-auto">R$ {v.preco ? Number(v.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00'}</p>
+                                    <p className="text-3xl font-black text-green-700 mb-4 mt-auto">R$ {v.preco ? Number(v.preco).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00'}</p>
                                     
-                                    <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 border-2 border-black text-white py-3 px-4 rounded-lg font-black hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                                          <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-                                        </svg>
-                                        Tenho Interesse
-                                    </button>
+                                    <div className="space-y-2">
+                                        <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 border-2 border-black text-white py-2.5 px-4 rounded-lg font-black hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
+                                            📲 Partilhar WhatsApp
+                                        </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => editarVeiculo(v)} className="w-1/2 bg-yellow-300 border-2 border-black text-black py-2 rounded-lg font-black hover:bg-yellow-400 transition-colors">
+                                                ✏️ Editar
+                                            </button>
+                                            <button onClick={() => apagarVeiculo(v.id)} className="w-1/2 bg-red-500 border-2 border-black text-white py-2 rounded-lg font-black hover:bg-red-600 transition-colors">
+                                                🗑️ Apagar
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
