@@ -1,0 +1,43 @@
+name: Ajustar instrução de volume da Rádio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/radio-volume-copy-v12.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar texto do volume
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('Volume: botões do iPhone','Volume: use os botões do celular')
+          s=s.replace('No iPhone, ajuste o volume pelos botões laterais','Volume: use os botões do celular')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('index.html')
+          h=p.read_text(encoding='utf-8')
+          if re.search(r'/radio-crediti\.js\?v=\d+',h):
+              h=re.sub(r'/radio-crediti\.js\?v=\d+','/radio-crediti.js?v=12',h,count=1)
+          elif '/radio-crediti.js' in h:
+              h=h.replace('/radio-crediti.js','/radio-crediti.js?v=12',1)
+          p.write_text(h,encoding='utf-8')
+          PY
+          grep -q 'Volume: use os botões do celular' radio-crediti.js
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Ajustar instrução de volume da Rádio Crediti"
+          git push
