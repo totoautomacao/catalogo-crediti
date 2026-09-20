@@ -1,0 +1,89 @@
+name: Melhorar qualidade Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/radio-quality-v4.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Melhorar estabilidade e qualidade do audio
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace("document.body.style.paddingBottom='calc(72px + env(safe-area-inset-bottom))';", "document.body.style.paddingBottom='calc(24px + env(safe-area-inset-bottom))';", 1)
+          s=s.replace("#crediti-radio-root{position:fixed;left:10px;bottom:calc(8px + env(safe-area-inset-bottom));", "#crediti-radio-root{position:fixed;left:10px;bottom:calc(5px + env(safe-area-inset-bottom));", 1)
+
+          old="return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&(!c||/(mp3|aac|aacp|ogg)/i.test(c))"
+          new="return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320"
+          if old not in s:
+              raise SystemExit('filtro de stream antigo nao encontrado')
+          s=s.replace(old,new,1)
+
+          old="function loadLive(autoplay){const s=stations[currentIndex],u=stationUrl(s);if(!u)return;sourceMode='live';switching=true;audio.src=u;audio.load();setTimeout(()=>switching=false,250);"
+          new="function loadLive(autoplay){const s=stations[currentIndex],u=stationUrl(s);if(!u)return;sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);"
+          if old not in s:
+              raise SystemExit('loadLive antigo nao encontrado')
+          s=s.replace(old,new,1)
+
+          old="const t=available[offlineIndex];sourceMode='offline';switching=true;audio.src=t.url;audio.load();setStatus(`Offline • ${t.title}`);setTimeout(()=>switching=false,250);"
+          new="const t=available[offlineIndex];sourceMode='offline';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=t.url;audio.load();setStatus(`Offline • ${t.title}`);setTimeout(()=>switching=false,420);"
+          if old not in s:
+              raise SystemExit('loadOffline antigo nao encontrado')
+          s=s.replace(old,new,1)
+
+          old="if(sourceMode!=='live')sourceMode='live';if(!prepared)await fetchStations();if(prepared){if(!audio.src||sourceMode!=='live')loadLive(false);try{await audio.play()}"
+          new="const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)loadLive(false);audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}"
+          if old not in s:
+              raise SystemExit('controle play antigo nao encontrado')
+          s=s.replace(old,new,1)
+
+          old="audio.addEventListener('stalled',()=>{if(!navigator.onLine)switchToOffline();else setStatus('Reconectando…')});\n  audio.addEventListener('error',()=>{syncPlay();if(!navigator.onLine||sourceMode==='offline')setTimeout(()=>loadOffline(true,true),250);else setTimeout(tryNextLive,450)});\n  audio.addEventListener('ended',()=>sourceMode==='offline'?loadOffline(true,true):tryNextLive());"
+          new="audio.addEventListener('stalled',()=>{if(switching)return;if(!navigator.onLine)switchToOffline();else setStatus('Reconectando…')});\n  audio.addEventListener('error',()=>{if(switching)return;syncPlay();if(!navigator.onLine||sourceMode==='offline')setTimeout(()=>loadOffline(true,true),400);else setTimeout(tryNextLive,700)});\n  audio.addEventListener('ended',()=>{if(switching)return;sourceMode==='offline'?loadOffline(true,true):tryNextLive()});"
+          if old not in s:
+              raise SystemExit('handlers antigos nao encontrados')
+          s=s.replace(old,new,1)
+
+          s=s.replace("setStatus('Tocando • programação variada')", "setStatus('Tocando • qualidade alta')")
+          p.write_text(s,encoding='utf-8')
+          PY
+          grep -q "c==='mp3'" radio-crediti.js
+          grep -q "bitrate||0)>=128" radio-crediti.js
+          grep -q "playbackRate=1" radio-crediti.js
+          grep -q "paddingBottom='calc(24px + env(safe-area-inset-bottom))'" radio-crediti.js
+
+      - name: Forcar versao nova no catalogo
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s2=re.sub(r'/radio-crediti\.js(?:\?v=\d+)?', '/radio-crediti.js?v=4', s, count=1)
+          if s2==s:
+              raise SystemExit('referencia da radio nao encontrada')
+          p.write_text(s2,encoding='utf-8')
+
+          h=Path('_headers')
+          hs=h.read_text(encoding='utf-8') if h.exists() else ''
+          if '/radio-crediti.js' not in hs:
+              hs += '\n/radio-crediti.js\n  Cache-Control: no-cache, no-store, must-revalidate\n'
+              h.write_text(hs,encoding='utf-8')
+          PY
+
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html _headers
+          git commit -m "Melhorar qualidade e estabilidade da Radio Crediti"
+          git push
