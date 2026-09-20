@@ -20,6 +20,7 @@
   const STORAGE_VOL='crediti_radio_volume_v1';
   const STORAGE_MUTE='crediti_radio_mute_v1';
   const DEFAULT_VOL=.22;
+  const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const audio=new Audio();
   audio.preload='none';
   audio.playsInline=true;
@@ -34,7 +35,7 @@
   let cacheStarted=false;
   let lastVolume=Math.max(.05,Math.min(1,Number(localStorage.getItem(STORAGE_VOL))||DEFAULT_VOL));
   let muted=localStorage.getItem(STORAGE_MUTE)==='1';
-  audio.volume=muted?0:lastVolume;
+  audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;
 
   document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(24px + env(safe-area-inset-bottom))';
 
@@ -48,7 +49,7 @@
     .cr-copy{display:none;min-width:0;max-width:165px}.cr-shell.is-open .cr-copy{display:block}
     .cr-title{font-size:12px;font-weight:800;white-space:nowrap}.cr-status{font-size:10px;color:rgba(0,0,0,.52);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
     .cr-controls{display:none;align-items:center;gap:7px;margin-left:2px}.cr-shell.is-open .cr-controls{display:flex}
-    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}
+    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);white-space:nowrap}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:block}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}
     .cr-bars{display:none;align-items:flex-end;gap:2px;height:15px;margin-left:1px}.cr-shell.is-playing .cr-bars{display:flex}
     .cr-bars i{display:block;width:3px;border-radius:3px;background:#111;animation:crEq .8s ease-in-out infinite alternate}.cr-bars i:nth-child(1){height:6px}.cr-bars i:nth-child(2){height:12px;animation-delay:.14s}.cr-bars i:nth-child(3){height:8px;animation-delay:.28s}
     @keyframes crEq{from{transform:scaleY(.45);opacity:.5}to{transform:scaleY(1);opacity:1}}
@@ -58,14 +59,14 @@
 
   const root=document.createElement('div');
   root.id='crediti-radio-root';
-  root.innerHTML=`<div class="cr-shell" id="crShell"><button class="cr-radio-btn" id="crExpand" aria-label="Abrir Rádio Crediti">📻</button><button class="cr-play" id="crPlay" aria-label="Tocar rádio">▶</button><div class="cr-copy"><div class="cr-title">Rádio Crediti</div><div class="cr-status" id="crStatus">Programação variada</div></div><div class="cr-bars"><i></i><i></i><i></i></div><div class="cr-controls"><button class="cr-mute" id="crMute" aria-label="Silenciar">🔊</button><input class="cr-volume" id="crVolume" type="range" min="0" max="100" step="1" aria-label="Volume da rádio"/><button class="cr-close" id="crClose" aria-label="Fechar controles">×</button></div></div>`;
-  document.body.appendChild(root);
+  root.innerHTML=`<div class="cr-shell" id="crShell"><button class="cr-radio-btn" id="crExpand" aria-label="Abrir Rádio Crediti">📻</button><button class="cr-play" id="crPlay" aria-label="Tocar rádio">▶</button><div class="cr-copy"><div class="cr-title">Rádio Crediti</div><div class="cr-status" id="crStatus">Programação variada</div></div><div class="cr-bars"><i></i><i></i><i></i></div><div class="cr-controls"><button class="cr-mute" id="crMute" aria-label="Silenciar">🔊</button><input class="cr-volume" id="crVolume" type="range" min="0" max="100" step="1" aria-label="Volume da rádio"/><span class="cr-ios-volume">Volume: botões do iPhone</span><button class="cr-close" id="crClose" aria-label="Fechar controles">×</button></div></div>`;
+  document.body.appendChild(root);if(IS_IOS) root.classList.add('is-ios');
 
   const shell=document.getElementById('crShell'),btnExpand=document.getElementById('crExpand'),btnPlay=document.getElementById('crPlay'),btnMute=document.getElementById('crMute'),btnClose=document.getElementById('crClose'),volume=document.getElementById('crVolume'),status=document.getElementById('crStatus');
   volume.value=String(Math.round(lastVolume*100));
   const setStatus=t=>status.textContent=t||'Programação variada';
   const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};
-  function syncMute(){btnMute.textContent=audio.volume===0?'🔇':audio.volume<.45?'🔉':'🔊';localStorage.setItem(STORAGE_MUTE,audio.volume===0?'1':'0')}
+  function syncMute(){const off=audio.muted||(!IS_IOS&&audio.volume===0);btnMute.textContent=off?'🔇':(!IS_IOS&&audio.volume<.45?'🔉':'🔊');localStorage.setItem(STORAGE_MUTE,off?'1':'0')}
   function syncPlay(){const playing=!audio.paused&&!audio.ended;shell.classList.toggle('is-playing',playing);btnPlay.textContent=playing?'❚❚':'▶';btnPlay.setAttribute('aria-label',playing?'Pausar rádio':'Tocar rádio')}
 
   function stationScore(s){const txt=((s.name||'')+' '+(s.tags||'')).toLowerCase(),genres=['sertanejo','forro','forró','pop','rock','romant','mpb','flashback','dance','hits','eclet','eclectic','varied','variad','musica','música'],bad=['news','noticia','notícia','talk','jornal','sports','esporte','podcast'];let score=genres.reduce((n,g)=>n+(txt.includes(g)?1:0),0)*120+Math.log1p(Number(s.votes)||0)*14+Math.min(80,(Number(s.bitrate)||0)/3);if(txt.includes('variety')||txt.includes('variad')||txt.includes('eclet'))score+=220;if(txt.includes('hits')||txt.includes('music')||txt.includes('musica')||txt.includes('música'))score+=70;bad.forEach(k=>{if(txt.includes(k))score-=180});return score}
@@ -83,8 +84,8 @@
 
   btnExpand.addEventListener('click',()=>setOpen(!expanded));btnClose.addEventListener('click',()=>setOpen(false));
   btnPlay.addEventListener('click',async()=>{setOpen(true);if(!audio.paused){audio.pause();return}if(!navigator.onLine){await loadOffline(true,false);return}const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)loadLive(false);audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir')}}else{const ok=await loadOffline(true,false);if(!ok)setStatus('Rádio indisponível no momento')}});
-  btnMute.addEventListener('click',()=>{if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100))}else{lastVolume=audio.volume;audio.volume=0;volume.value='0'}syncMute()});
-  volume.addEventListener('input',()=>{const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});
+  btnMute.addEventListener('click',()=>{if(IS_IOS){audio.muted=!audio.muted}else if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100));audio.muted=false}else{lastVolume=audio.volume;audio.volume=0;volume.value='0';audio.muted=true}syncMute()});
+  volume.addEventListener('input',()=>{if(IS_IOS){setStatus('No iPhone, ajuste o volume pelos botões laterais');return}const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;audio.muted=v===0;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});
   audio.addEventListener('play',()=>{syncPlay();if(sourceMode==='offline'){const t=OFFLINE_PLAYLIST.find(x=>x.url===audio.src);setStatus(`Offline • ${t?.title||'playlist variada'}`)}else setStatus('Tocando • qualidade alta')});
   audio.addEventListener('pause',()=>{syncPlay();if(switching)return;if(sourceMode==='offline')setStatus('Offline pausado • toque para continuar');else if(prepared)setStatus('Pausado • toque para continuar')});
   audio.addEventListener('waiting',()=>setStatus(sourceMode==='offline'?'Abrindo música offline…':'Conectando à rádio…'));
