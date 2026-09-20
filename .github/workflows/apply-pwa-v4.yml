@@ -1,0 +1,76 @@
+name: Finalizar PWA Catálogo Crediti v4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-pwa-v4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Atualizar referências do ícone aprovado
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          for old,new in [
+            ('/manifest.webmanifest?v=3','/manifest.webmanifest?v=4'),
+            ('/icon-192-v3.png','/icon-192-v4.png'),
+            ('/apple-touch-icon-v3.png','/apple-touch-icon-v4.png'),
+            ('/icon-192.png?v=3','/icon-192-v4.png'),
+            ('/apple-touch-icon.png?v=3','/apple-touch-icon-v4.png')
+          ]:
+            s=s.replace(old,new)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+          cat > manifest.webmanifest <<'JSON'
+          {
+            "name": "Catálogo Crediti",
+            "short_name": "Catálogo Crediti",
+            "description": "Catálogo de veículos Crediti",
+            "start_url": "/?pwa=4",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#ffffff",
+            "icons": [
+              {"src":"/icon-192-v4.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+              {"src":"/icon-512-v4.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+            ]
+          }
+          JSON
+
+          cat > sw.js <<'JS'
+          const CACHE='catalogo-crediti-v4';
+          self.addEventListener('install',()=>self.skipWaiting());
+          self.addEventListener('activate',e=>e.waitUntil((async()=>{
+            const keys=await caches.keys();
+            await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+            await self.clients.claim();
+          })()));
+          self.addEventListener('fetch',()=>{});
+          JS
+
+      - name: Publicar versão v4
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html manifest.webmanifest sw.js
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração necessária"
+          else
+            git commit -m "Ativar ícone aprovado do PWA v4"
+            git push
+          fi
