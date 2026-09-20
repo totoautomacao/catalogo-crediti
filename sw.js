@@ -1,6 +1,6 @@
-const CORE='catalogo-crediti-v9';
+const CORE='catalogo-crediti-v10';
 const MUSIC='crediti-radio-offline-v1';
-const CORE_FILES=['/','/index.html','/radio-crediti.js','/manifest.webmanifest','/icon-exact-192-v7.png'];
+const CORE_FILES=['/','/index.html','/radio-crediti.js','/manifest.webmanifest','/icon-exact-192-v7.png','/bank-itau.png','/bank-bradesco.png','/bank-santander.png','/bank-bv.png','/bank-pan.png','/omni-logo-crediti.png','/bank-safra.png','/bank-volkswagen.png','/bank-c6.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}
   await self.skipWaiting();
