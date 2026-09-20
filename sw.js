@@ -1,4 +1,4 @@
-const CACHE='catalogo-crediti-v2';
+const CACHE='catalogo-crediti-v3';
 self.addEventListener('install',()=>self.skipWaiting());
 self.addEventListener('activate',e=>e.waitUntil((async()=>{
   const keys=await caches.keys();
