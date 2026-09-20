@@ -20,85 +20,76 @@ jobs:
       - name: Instalar conversor SVG
         run: pip install cairosvg
 
-      - name: Criar ícone vetorial limpo
+      - name: Criar ícone vetorial v3 sem artefatos
         shell: bash
         run: |
-          cat > icon.svg <<'SVG'
+          cat > icon-v3.svg <<'SVG'
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
             <defs>
-              <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ff3b48"/>
-                <stop offset="0.55" stop-color="#f31328"/>
-                <stop offset="1" stop-color="#d90017"/>
+              <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ff424f"/>
+                <stop offset="0.58" stop-color="#ef1428"/>
+                <stop offset="1" stop-color="#d80a1d"/>
               </linearGradient>
               <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#465569"/>
-                <stop offset="1" stop-color="#141b25"/>
+                <stop offset="0" stop-color="#4b596b"/>
+                <stop offset="1" stop-color="#141b24"/>
               </linearGradient>
-              <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffffff"/>
-                <stop offset="1" stop-color="#e8edf2"/>
-              </linearGradient>
-              <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="5"/>
-              </filter>
             </defs>
 
-            <!-- fundo branco limpo, estilo ícone iOS -->
-            <rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff"/>
-            <rect x="8" y="8" width="496" height="496" rx="108" fill="none" stroke="#f0f0f0" stroke-width="3"/>
+            <!-- fundo branco do app icon -->
+            <rect width="512" height="512" rx="112" fill="#ffffff"/>
 
-            <!-- sombra neutra, sem faixa vermelha -->
-            <ellipse cx="256" cy="392" rx="142" ry="18" fill="#000000" opacity="0.10" filter="url(#shadow)"/>
+            <!-- carro, todo dentro da safe area e sem qualquer faixa atravessando -->
+            <g transform="translate(86 124)">
+              <ellipse cx="170" cy="256" rx="128" ry="13" fill="#000" opacity="0.08"/>
 
-            <!-- carro dentro da safe area -->
-            <g transform="translate(72 113)">
               <!-- espelhos -->
-              <path fill="url(#red)" d="M46 119c-27-8-42-3-44 13-2 18 16 25 50 20l10-19-16-14Z"/>
-              <path fill="url(#red)" d="M322 119c27-8 42-3 44 13 2 18-16 25-50 20l-10-19 16-14Z"/>
-              <path fill="#151c25" d="M16 144c12 9 27 11 42 7l4-18-46 11Z" opacity=".92"/>
-              <path fill="#151c25" d="M352 144c-12 9-27 11-42 7l-4-18 46 11Z" opacity=".92"/>
+              <path d="M47 103c-23-8-39-3-41 12-2 16 14 23 42 18l15-17-16-13Z" fill="url(#body)"/>
+              <path d="M293 103c23-8 39-3 41 12 2 16-14 23-42 18l-15-17 16-13Z" fill="url(#body)"/>
 
-              <!-- carroceria -->
-              <path fill="url(#red)" d="M67 98c12-52 46-82 91-89h52c45 7 79 37 91 89l25 24c10 10 16 23 16 38v79c0 18-15 33-33 33H59c-18 0-33-15-33-33v-79c0-15 6-28 16-38l25-24Z"/>
+              <!-- carroceria principal -->
+              <path d="M64 92c11-45 40-72 78-80h56c38 8 67 35 78 80l25 23c10 9 15 21 15 35v69c0 17-14 31-31 31H55c-17 0-31-14-31-31v-69c0-14 5-26 15-35l25-23Z" fill="url(#body)"/>
 
               <!-- para-brisa -->
-              <path fill="url(#glass)" d="M104 99c13-37 35-59 66-65h28c31 6 53 28 66 65H104Z"/>
-              <path fill="#ffffff" opacity=".11" d="M121 91c16-29 33-43 54-48h6l-46 48h-14Z"/>
+              <path d="M103 94c13-32 31-51 58-58h18c27 7 45 26 58 58H103Z" fill="url(#glass)"/>
+              <path d="M119 87c15-24 30-35 47-40h8l-34 40h-21Z" fill="#fff" opacity="0.10"/>
 
               <!-- capô -->
-              <path fill="#ff6972" opacity=".42" d="M92 118c26-16 158-16 184 0l-28 48H120l-28-48Z"/>
+              <path d="M91 113c32-12 126-12 158 0l-25 42H116l-25-42Z" fill="#ff6570" opacity="0.36"/>
 
               <!-- faróis -->
-              <path fill="#202832" d="M56 157c22-18 53-21 89-8l-18 42c-31 5-57-6-71-34Z"/>
-              <path fill="#202832" d="M312 157c-22-18-53-21-89-8l18 42c31 5 57-6 71-34Z"/>
-              <path fill="url(#lamp)" d="M66 158c18-11 39-12 62-5l-9 23c-22 4-40-2-53-18Z"/>
-              <path fill="url(#lamp)" d="M302 158c-18-11-39-12-62-5l9 23c22 4 40-2 53-18Z"/>
+              <path d="M53 151c20-16 47-18 77-7l-13 34c-28 5-50-4-64-27Z" fill="#1f2731"/>
+              <path d="M287 151c-20-16-47-18-77-7l13 34c28 5 50-4 64-27Z" fill="#1f2731"/>
+              <path d="M64 153c16-9 34-10 52-4l-7 17c-18 3-34-1-45-13Z" fill="#ffffff"/>
+              <path d="M276 153c-16-9-34-10-52-4l7 17c18 3 34-1 45-13Z" fill="#ffffff"/>
 
-              <!-- grade principal -->
-              <path fill="#151c25" d="M111 188h146l27 25-20 39H104l-20-39 27-25Z"/>
-              <path fill="#2c3542" d="M103 208h162v9H103zm6 18h150v9H109z"/>
+              <!-- grade superior -->
+              <path d="M112 183h116l22 20-16 28H106l-16-28 22-20Z" fill="#151c25"/>
+              <rect x="109" y="198" width="122" height="7" rx="3.5" fill="#2d3540"/>
+              <rect x="116" y="213" width="108" height="7" rx="3.5" fill="#2d3540"/>
 
-              <!-- entradas inferiores, separadas e limpas -->
-              <path fill="#202832" d="M54 219c16-6 31-6 45 1l-13 29H58c-7-8-9-18-4-30Z"/>
-              <path fill="#202832" d="M314 219c-16-6-31-6-45 1l13 29h28c7-8 9-18 4-30Z"/>
+              <!-- entradas laterais, sem união entre elas -->
+              <path d="M55 205c14-5 27-5 38 0l-10 25H60c-6-7-7-15-5-25Z" fill="#202833"/>
+              <path d="M285 205c-14-5-27-5-38 0l10 25h23c6-7 7-15 5-25Z" fill="#202833"/>
 
-              <!-- pneus -->
-              <path fill="#151c25" d="M70 255h43v23c0 13-10 23-23 23h-3c-9 0-17-7-17-17v-29Z"/>
-              <path fill="#151c25" d="M255 255h43v29c0 10-8 17-17 17h-3c-13 0-23-10-23-23v-23Z"/>
+              <!-- pneus independentes -->
+              <rect x="64" y="235" width="36" height="38" rx="14" fill="#171e27"/>
+              <rect x="240" y="235" width="36" height="38" rx="14" fill="#171e27"/>
             </g>
           </svg>
           SVG
 
-      - name: Gerar PNGs nítidos do aplicativo
+      - name: Gerar novos PNGs com nomes v3
         run: |
           python - <<'PY'
           import cairosvg
-          for size, path in [(192,'icon-192.png'), (512,'icon-512.png'), (180,'apple-touch-icon.png')]:
-              cairosvg.svg2png(url='icon.svg', write_to=path, output_width=size, output_height=size)
+          files=[(192,'icon-192-v3.png'),(512,'icon-512-v3.png'),(180,'apple-touch-icon-v3.png')]
+          for size,path in files:
+              cairosvg.svg2png(url='icon-v3.svg',write_to=path,output_width=size,output_height=size)
           PY
 
-      - name: Criar manifesto PWA
+      - name: Criar manifesto PWA v3
         shell: bash
         run: |
           cat > manifest.webmanifest <<'JSON'
@@ -106,23 +97,23 @@ jobs:
             "name": "Catálogo Crediti",
             "short_name": "Catálogo Crediti",
             "description": "Catálogo de veículos Crediti",
-            "start_url": "/?pwa=2",
+            "start_url": "/?pwa=3",
             "scope": "/",
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#ffffff",
             "icons": [
-              {"src":"/icon-192.png?v=2","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-              {"src":"/icon-512.png?v=2","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+              {"src":"/icon-192-v3.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+              {"src":"/icon-512-v3.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
             ]
           }
           JSON
 
-      - name: Atualizar service worker
+      - name: Atualizar service worker v3
         shell: bash
         run: |
           cat > sw.js <<'JS'
-          const CACHE='catalogo-crediti-v2';
+          const CACHE='catalogo-crediti-v3';
           self.addEventListener('install',()=>self.skipWaiting());
           self.addEventListener('activate',e=>e.waitUntil((async()=>{
             const keys=await caches.keys();
@@ -138,20 +129,22 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace('href="/icon-192.png"','href="/icon-192.png?v=2"')
-          s=s.replace('href="/apple-touch-icon.png"','href="/apple-touch-icon.png?v=2"')
+          import re
+          s=re.sub(r'<link rel="icon"[^>]*>', '<link rel="icon" type="image/png" sizes="192x192" href="/icon-192-v3.png" />', s)
+          s=re.sub(r'<link rel="apple-touch-icon"[^>]*>', '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v3.png" />', s)
+          s=re.sub(r'<link rel="manifest"[^>]*>', '<link rel="manifest" href="/manifest.webmanifest?v=3" />', s)
           p.write_text(s,encoding='utf-8')
           PY
 
-      - name: Publicar correção do ícone PWA
+      - name: Publicar ícone v3
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html icon.svg icon-192.png icon-512.png apple-touch-icon.png manifest.webmanifest sw.js
+          git add index.html icon-v3.svg icon-192-v3.png icon-512-v3.png apple-touch-icon-v3.png manifest.webmanifest sw.js
           if git diff --cached --quiet; then
             echo "Nenhuma alteração necessária"
           else
-            git commit -m "Corrigir ícone PWA sem faixa vermelha"
+            git commit -m "Aplicar ícone PWA v3 sem artefatos"
             git push
           fi
