@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Crediti</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-4">
+    <div id="root"></div>
+    <script type="text/babel">
+        const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
+        const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        function App() {
+            const [veiculos, setVeiculos] = React.useState([]);
+            const [view, setView] = React.useState('lista');
+            const [loading, setLoading] = React.useState(false);
+            const [fotoFile, setFotoFile] = React.useState(null);
+            
+            const [formData, setFormData] = React.useState({
+                id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', 
+                versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: ''
+            });
+
+            React.useEffect(() => { loadVeiculos(); }, []);
+
+            async function loadVeiculos() {
+                setLoading(true);
+                const { data } = await supabase.from('veiculos').select('*, fotos_veiculo(url_foto)').order('criado_em', { ascending: false });
+                if (data) setVeiculos(data);
+                setLoading(false);
+            }
+
+            async function salvar(e) {
+                e.preventDefault();
+                setLoading(true);
+                let veiculoId = formData.id;
+                
+                const veiculoData = { ...formData };
+                delete veiculoData.id;
+
+                if (veiculoId) {
+                    await supabase.from('veiculos').update(veiculoData).eq('id', veiculoId);
+                } else {
+                    const { data } = await supabase.from('veiculos').insert([veiculoData]).select();
+                    if(data && data.length > 0) veiculoId = data[0].id;
+                }
+
+                if (fotoFile && veiculoId) {
+                    const fileName = `${veiculoId}_${Date.now()}.jpg`;
+                    await supabase.storage.from('fotos').upload(fileName, fotoFile);
+                    const { data: publicUrlData } = supabase.storage.from('fotos').getPublicUrl(fileName);
+                    await supabase.from('fotos_veiculo').insert([{ veiculo_id: veiculoId, url_foto: publicUrlData.publicUrl }]);
+                }
+
+                setView('lista');
+                setFotoFile(null);
+                setFormData({ id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: '' });
+                loadVeiculos();
+            }
+
+            async function apagar(id) {
+                if(window.confirm("Tem certeza que deseja apagar este veículo?")) {
+                    setLoading(true);
+                    await supabase.from('veiculos').delete().eq('id', id);
+                    loadVeiculos();
+                }
+            }
+
+            function editar(v) {
+                setFormData({ ...v });
+                setView('form');
+            }
+
+            async function compartilharWhatsApp(v) {
+                const texto = `🚘 *Catálogo Crediti - Oportunidade de Repasse*\n\n*Veículo:* ${v.marca} ${v.modelo} - ${v.versao}\n*Ano:* ${v.ano_fabricacao}/${v.ano_modelo}\n💰 *Valor Exclusivo:* R$ ${v.nosso_valor}\n\n🚀 _"Veículos com esse padrão de qualidade e preço de repasse costumam sair do nosso pátio em poucas horas. É a sua chance de garantir um excelente negócio com margem de lucro hoje. Vamos fechar?"_`;
+                
+                let fotoUrl = v.fotos_veiculo && v.fotos_veiculo.length > 0 ? v.fotos_veiculo[0].url_foto : null;
+
+                if (fotoUrl && navigator.canShare) {
+                    try {
+                        const res = await fetch(fotoUrl);
+                        const blob = await res.blob();
+                        const file = new File([blob], 'veiculo.jpg', { type: blob.type });
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({ text: texto, files: [file] });
+                            return;
+                        }
+                    } catch (e) { console.error(e); }
+                }
+                
+                const zapUrl = `https://wa.me/?text=${encodeURIComponent(texto + (fotoUrl ? '\n\nVeja a foto: ' + fotoUrl : ''))}`;
+                window.open(zapUrl, '_blank');
+            }
+
+            if (view === 'form') {
+                return (
+                    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md mt-6">
+                        <h2 className="text-2xl font-bold mb-4">{formData.id ? 'Editar' : 'Adicionar'} Veículo</h2>
+                        <form onSubmit={salvar} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <input required placeholder="Placa (Ex: ABC1234)" className="border p-2 rounded w-full" value={formData.placa} onChange={e => setFormData({...formData, placa: e.target.value})} />
+                                <input required placeholder="Marca" className="border p-2 rounded w-full" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} />
+                                <input required placeholder="Modelo" className="border p-2 rounded w-full" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} />
+                                <input required placeholder="Versão" className="border p-2 rounded w-full" value={formData.versao} onChange={e => setFormData({...formData, versao: e.target.value})} />
+                                <input required type="number" placeholder="Ano Fabricação" className="border p-2 rounded w-full" value={formData.ano_fabricacao} onChange={e => setFormData({...formData, ano_fabricacao: e.target.value})} />
+                                <input required type="number" placeholder="Ano Modelo" className="border p-2 rounded w-full" value={formData.ano_modelo} onChange={e => setFormData({...formData, ano_modelo: e.target.value})} />
+                                <input required type="number" placeholder="Seu Valor de Venda (R$)" className="border p-2 rounded w-full col-span-2" value={formData.nosso_valor} onChange={e => setFormData({...formData, nosso_valor: e.target.value})} />
+                            </div>
+                            <div className="border-t pt-4">
+                                <label className="block mb-2 font-bold">Foto em Alta Resolução (JPEG/JPG)</label>
+                                <input type="file" accept="image/jpeg, image/jpg" onChange={e => setFotoFile(e.target.files[0])} className="w-full" />
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded font-bold w-full hover:bg-blue-700">{loading ? 'A Guardar...' : 'Guardar Veículo'}</button>
+                                <button type="button" onClick={() => setView('lista')} className="bg-gray-400 text-white px-6 py-2 rounded font-bold hover:bg-gray-500">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-4xl mx-auto mt-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h1 className="text-3xl font-extrabold text-blue-900">Catálogo Crediti</h1>
+                        <button onClick={() => { setFormData({id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: ''}); setView('form'); }} className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">+ Novo Veículo</button>
+                    </div>
+                    
+                    {loading && <p>A carregar catálogo...</p>}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {veiculos.map(v => (
+                            <div key={v.id} className="bg-white rounded-lg shadow-lg overflow-hidden border">
+                                {v.fotos_veiculo && v.fotos_veiculo.length > 0 ? (
+                                    <img src={v.fotos_veiculo[0].url_foto} className="w-full h-48 object-cover" />
+                                ) : (
+                                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">Sem Foto</div>
+                                )}
+                                <div className="p-4">
+                                    <h3 className="text-xl font-bold">{v.marca} {v.modelo}</h3>
+                                    <p className="text-gray-600">{v.versao} • {v.ano_fabricacao}/{v.ano_modelo}</p>
+                                    <p className="text-2xl font-black text-green-700 mt-2">R$ {v.nosso_valor}</p>
+                                    
+                                    <div className="mt-4 flex flex-col gap-2">
+                                        <button onClick={() => compartilharWhatsApp(v)} className="bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600 flex justify-center items-center gap-2">
+                                            📲 Enviar Cliente (WhatsApp)
+                                        </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => editar(v)} className="bg-yellow-500 text-white py-1 flex-1 rounded font-bold hover:bg-yellow-600">Editar</button>
+                                            <button onClick={() => apagar(v.id)} className="bg-red-500 text-white py-1 flex-1 rounded font-bold hover:bg-red-600">Apagar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {veiculos.length === 0 && !loading && <p className="text-gray-500">Nenhum veículo cadastrado ainda.</p>}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
