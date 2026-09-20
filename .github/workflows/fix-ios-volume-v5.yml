@@ -1,0 +1,73 @@
+name: Corrigir volume Radio Crediti iPhone
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-ios-volume-v5.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar controles de volume no iPhone
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace("const DEFAULT_VOL=.22;\n  const audio=new Audio();",
+                      "const DEFAULT_VOL=.22;\n  const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);\n  const audio=new Audio();",1)
+
+          s=s.replace("audio.volume=muted?0:lastVolume;",
+                      "audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;",1)
+
+          s=s.replace(".cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}",
+                      ".cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);white-space:nowrap}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:block}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}",1)
+
+          s=s.replace("<input class=\"cr-volume\" id=\"crVolume\" type=\"range\" min=\"0\" max=\"100\" step=\"1\" aria-label=\"Volume da rádio\"/><button class=\"cr-close\"",
+                      "<input class=\"cr-volume\" id=\"crVolume\" type=\"range\" min=\"0\" max=\"100\" step=\"1\" aria-label=\"Volume da rádio\"/><span class=\"cr-ios-volume\">Volume: botões do iPhone</span><button class=\"cr-close\"",1)
+
+          s=s.replace("document.body.appendChild(root);",
+                      "document.body.appendChild(root);if(IS_IOS) root.classList.add('is-ios');",1)
+
+          s=s.replace("function syncMute(){btnMute.textContent=audio.volume===0?'🔇':audio.volume<.45?'🔉':'🔊';localStorage.setItem(STORAGE_MUTE,audio.volume===0?'1':'0')}",
+                      "function syncMute(){const off=audio.muted||(!IS_IOS&&audio.volume===0);btnMute.textContent=off?'🔇':(!IS_IOS&&audio.volume<.45?'🔉':'🔊');localStorage.setItem(STORAGE_MUTE,off?'1':'0')}",1)
+
+          old="btnMute.addEventListener('click',()=>{if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100))}else{lastVolume=audio.volume;audio.volume=0;volume.value='0'}syncMute()});"
+          new="btnMute.addEventListener('click',()=>{if(IS_IOS){audio.muted=!audio.muted}else if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100));audio.muted=false}else{lastVolume=audio.volume;audio.volume=0;volume.value='0';audio.muted=true}syncMute()});"
+          if old not in s: raise SystemExit('handler mute nao encontrado')
+          s=s.replace(old,new,1)
+
+          old="volume.addEventListener('input',()=>{const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});"
+          new="volume.addEventListener('input',()=>{if(IS_IOS){setStatus('No iPhone, ajuste o volume pelos botões laterais');return}const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;audio.muted=v===0;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});"
+          if old not in s: raise SystemExit('handler volume nao encontrado')
+          s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+
+          idx=Path('index.html')
+          t=idx.read_text(encoding='utf-8')
+          t2=re.sub(r'/radio-crediti\.js\?v=\d+', '/radio-crediti.js?v=5', t, count=1)
+          if t2==t:
+              if '/radio-crediti.js' in t:
+                  t2=t.replace('/radio-crediti.js','/radio-crediti.js?v=5',1)
+              else:
+                  raise SystemExit('script radio nao encontrado no index')
+          idx.write_text(t2,encoding='utf-8')
+          PY
+          grep -q "Volume: botões do iPhone" radio-crediti.js
+          grep -q "audio.muted=!audio.muted" radio-crediti.js
+          grep -q "radio-crediti.js?v=5" index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Corrigir controle de volume da Radio Crediti no iPhone"
+          git push
