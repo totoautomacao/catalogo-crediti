@@ -1,0 +1,42 @@
+name: Restaurar Radio Crediti estavel
+
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-radio-stable-v10.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restaurar player estavel
+        run: |
+          git show 8968fd6821bf46d149bf0763d92091da5979390b:radio-crediti.js > radio-crediti.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if re.search(r'/radio-crediti\.js\?v=\d+', s):
+              s=re.sub(r'/radio-crediti\.js\?v=\d+', '/radio-crediti.js?v=10', s, count=1)
+          elif '/radio-crediti.js' in s:
+              s=s.replace('/radio-crediti.js','/radio-crediti.js?v=10',1)
+          else:
+              raise SystemExit('referencia do player nao encontrada')
+          p.write_text(s,encoding='utf-8')
+          PY
+          grep -q 'Rádio Crediti' radio-crediti.js
+          ! grep -q '/api/radio?i=' radio-crediti.js
+      - name: Publicar restauracao
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Restaurar Radio Crediti estavel sem proxy"
+          git push
