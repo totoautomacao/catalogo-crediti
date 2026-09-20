@@ -1,0 +1,37 @@
+name: Ocultar descricao do preco interno
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hide-price-eye-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  hide-price-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deixar apenas o olho do preco interno
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''<div className="internal-price"><div className="flex items-center justify-between gap-3"><div><small className="text-black/40 font-semibold">Preço original do lojista</small><div className="font-extrabold">{precosVisiveis[v.id]?(Number(v.valor_lojista||0)>0?dinheiro(v.valor_lojista):'Não informado'):'R$ •••••••'}</div></div><button type="button" className="eye-btn" onClick={()=>alternarPreco(v.id)} title={precosVisiveis[v.id]?'Ocultar preço original':'Mostrar preço original'}><Icon name={precosVisiveis[v.id]?'eyeoff':'eye'} size={18}/></button></div><div className="text-[11px] text-black/35 font-semibold mt-1">Somente uso interno</div></div>'''
+          new = '''<div className="mt-3 flex items-center justify-end gap-2">{precosVisiveis[v.id]&&<span className="text-sm font-extrabold">{Number(v.valor_lojista||0)>0?dinheiro(v.valor_lojista):'Não informado'}</span>}<button type="button" className="eye-btn" onClick={()=>alternarPreco(v.id)} title={precosVisiveis[v.id]?'Ocultar preço':'Mostrar preço'}><Icon name={precosVisiveis[v.id]?'eyeoff':'eye'} size={18}/></button></div>'''
+          if old not in s:
+              raise SystemExit('Trecho do preço interno não encontrado')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Publicar no main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Simplificar preco interno para apenas o olho"
+          git push
