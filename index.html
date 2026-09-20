@@ -10,157 +10,115 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50 min-h-screen p-4">
+<body class="bg-gray-100 font-sans">
     <div id="root"></div>
+
     <script type="text/babel">
-        const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
-        const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const { useState, useEffect } = React;
+        const { createClient } = supabase;
+
+        // ⚠️ COLOQUE AS SUAS CHAVES AQUI:
+        const supabaseUrl = 'SUA_URL_DO_SUPABASE';
+        const supabaseKey = 'SUA_CHAVE_ANONIMA';
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
         function App() {
-            const [veiculos, setVeiculos] = React.useState([]);
-            const [view, setView] = React.useState('lista');
-            const [loading, setLoading] = React.useState(false);
-            const [fotoFile, setFotoFile] = React.useState(null);
-            
-            const [formData, setFormData] = React.useState({
-                id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', 
-                versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: ''
-            });
+            const [veiculos, setVeiculos] = useState([]);
+            const [form, setForm] = useState({ marca: '', modelo: '', ano: '', preco: '', foto_url: '' });
+            const [loading, setLoading] = useState(false);
 
-            React.useEffect(() => { loadVeiculos(); }, []);
+            useEffect(() => { fetchVeiculos(); }, []);
 
-            async function loadVeiculos() {
-                setLoading(true);
-                const { data } = await supabase.from('veiculos').select('*, fotos_veiculo(url_foto)').order('criado_em', { ascending: false });
+            async function fetchVeiculos() {
+                const { data } = await supabaseClient.from('veiculos').select('*').order('id', { ascending: false });
                 if (data) setVeiculos(data);
-                setLoading(false);
             }
 
-            async function salvar(e) {
+            async function adicionarVeiculo(e) {
                 e.preventDefault();
                 setLoading(true);
-                let veiculoId = formData.id;
+                // Converte vírgula para ponto e guarda como número
+                const precoFormatado = parseFloat(form.preco.replace(/\./g, '').replace(',', '.'));
                 
-                const veiculoData = { ...formData };
-                delete veiculoData.id;
-
-                if (veiculoId) {
-                    await supabase.from('veiculos').update(veiculoData).eq('id', veiculoId);
-                } else {
-                    const { data } = await supabase.from('veiculos').insert([veiculoData]).select();
-                    if(data && data.length > 0) veiculoId = data[0].id;
-                }
-
-                if (fotoFile && veiculoId) {
-                    const fileName = `${veiculoId}_${Date.now()}.jpg`;
-                    await supabase.storage.from('fotos').upload(fileName, fotoFile);
-                    const { data: publicUrlData } = supabase.storage.from('fotos').getPublicUrl(fileName);
-                    await supabase.from('fotos_veiculo').insert([{ veiculo_id: veiculoId, url_foto: publicUrlData.publicUrl }]);
-                }
-
-                setView('lista');
-                setFotoFile(null);
-                setFormData({ id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: '' });
-                loadVeiculos();
+                await supabaseClient.from('veiculos').insert([{ ...form, preco: precoFormatado }]);
+                setForm({ marca: '', modelo: '', ano: '', preco: '', foto_url: '' });
+                await fetchVeiculos();
+                setLoading(false);
+                alert("Veículo guardado com sucesso!");
             }
 
-            async function apagar(id) {
-                if(window.confirm("Tem certeza que deseja apagar este veículo?")) {
-                    setLoading(true);
-                    await supabase.from('veiculos').delete().eq('id', id);
-                    loadVeiculos();
-                }
+            // Função que deixa o preço como R$ 39.000,00
+            function formatarMoeda(valor) {
+                return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
             }
 
-            function editar(v) {
-                setFormData({ ...v });
-                setView('form');
-            }
-
-            async function compartilharWhatsApp(v) {
-                const texto = `🚘 *Catálogo Crediti - Oportunidade de Repasse*\n\n*Veículo:* ${v.marca} ${v.modelo} - ${v.versao}\n*Ano:* ${v.ano_fabricacao}/${v.ano_modelo}\n💰 *Valor Exclusivo:* R$ ${v.nosso_valor}\n\n🚀 _"Veículos com esse padrão de qualidade e preço de repasse costumam sair do nosso pátio em poucas horas. É a sua chance de garantir um excelente negócio com margem de lucro hoje. Vamos fechar?"_`;
-                
-                let fotoUrl = v.fotos_veiculo && v.fotos_veiculo.length > 0 ? v.fotos_veiculo[0].url_foto : null;
-
-                if (fotoUrl && navigator.canShare) {
-                    try {
-                        const res = await fetch(fotoUrl);
-                        const blob = await res.blob();
-                        const file = new File([blob], 'veiculo.jpg', { type: blob.type });
-                        if (navigator.canShare({ files: [file] })) {
-                            await navigator.share({ text: texto, files: [file] });
-                            return;
-                        }
-                    } catch (e) { console.error(e); }
-                }
-                
-                const zapUrl = `https://wa.me/?text=${encodeURIComponent(texto + (fotoUrl ? '\n\nVeja a foto: ' + fotoUrl : ''))}`;
-                window.open(zapUrl, '_blank');
-            }
-
-            if (view === 'form') {
-                return (
-                    <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md mt-6">
-                        <h2 className="text-2xl font-bold mb-4">{formData.id ? 'Editar' : 'Adicionar'} Veículo</h2>
-                        <form onSubmit={salvar} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <input required placeholder="Placa (Ex: ABC1234)" className="border p-2 rounded w-full" value={formData.placa} onChange={e => setFormData({...formData, placa: e.target.value})} />
-                                <input required placeholder="Marca" className="border p-2 rounded w-full" value={formData.marca} onChange={e => setFormData({...formData, marca: e.target.value})} />
-                                <input required placeholder="Modelo" className="border p-2 rounded w-full" value={formData.modelo} onChange={e => setFormData({...formData, modelo: e.target.value})} />
-                                <input required placeholder="Versão" className="border p-2 rounded w-full" value={formData.versao} onChange={e => setFormData({...formData, versao: e.target.value})} />
-                                <input required type="number" placeholder="Ano Fabricação" className="border p-2 rounded w-full" value={formData.ano_fabricacao} onChange={e => setFormData({...formData, ano_fabricacao: e.target.value})} />
-                                <input required type="number" placeholder="Ano Modelo" className="border p-2 rounded w-full" value={formData.ano_modelo} onChange={e => setFormData({...formData, ano_modelo: e.target.value})} />
-                                <input required type="number" placeholder="Seu Valor de Venda (R$)" className="border p-2 rounded w-full col-span-2" value={formData.nosso_valor} onChange={e => setFormData({...formData, nosso_valor: e.target.value})} />
-                            </div>
-                            <div className="border-t pt-4">
-                                <label className="block mb-2 font-bold">Foto em Alta Resolução (JPEG/JPG)</label>
-                                <input type="file" accept="image/jpeg, image/jpg" onChange={e => setFotoFile(e.target.files[0])} className="w-full" />
-                            </div>
-                            <div className="flex gap-4 pt-4">
-                                <button type="submit" disabled={loading} className="bg-blue-600 text-white px-6 py-2 rounded font-bold w-full hover:bg-blue-700">{loading ? 'A Guardar...' : 'Guardar Veículo'}</button>
-                                <button type="button" onClick={() => setView('lista')} className="bg-gray-400 text-white px-6 py-2 rounded font-bold hover:bg-gray-500">Cancelar</button>
-                            </div>
-                        </form>
-                    </div>
-                );
+            function enviarWhatsApp(veiculo) {
+                const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${formatarMoeda(veiculo.preco)} e tenho interesse.`;
+                // Altere o número 55000000000 para o seu número de WhatsApp com código de país e área
+                window.open(`https://wa.me/55000000000?text=${encodeURIComponent(texto)}`, '_blank');
             }
 
             return (
-                <div className="max-w-4xl mx-auto mt-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-3xl font-extrabold text-blue-900">Catálogo Crediti</h1>
-                        <button onClick={() => { setFormData({id: null, categoria: 'Carro', placa: '', marca: '', modelo: '', versao: '', ano_fabricacao: '', ano_modelo: '', nosso_valor: ''}); setView('form'); }} className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">+ Novo Veículo</button>
+                <div className="max-w-5xl mx-auto p-4 sm:p-6">
+                    <div className="bg-blue-900 rounded-xl shadow-lg p-6 mb-8 text-center">
+                        <h1 className="text-4xl font-extrabold text-white tracking-tight">Catálogo Crediti</h1>
+                        <p className="text-blue-200 mt-2 text-lg">Os melhores veículos aos melhores preços</p>
                     </div>
                     
-                    {loading && <p>A carregar catálogo...</p>}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-xl shadow-md mb-10 border-t-4 border-blue-600">
+                        <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">➕ Adicionar Veículo</h2>
+                        <form onSubmit={adicionarVeiculo} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div className="flex flex-col">
+                                <label className="text-sm font-semibold text-gray-600 mb-1">Marca</label>
+                                <input placeholder="Ex: Fiat" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.marca} onChange={e => setForm({...form, marca: e.target.value})} required />
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-sm font-semibold text-gray-600 mb-1">Modelo</label>
+                                <input placeholder="Ex: Uno Mille" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} required />
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-sm font-semibold text-gray-600 mb-1">Ano</label>
+                                <input placeholder="Ex: 2020" type="number" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.ano} onChange={e => setForm({...form, ano: e.target.value})} required />
+                            </div>
+                            <div className="flex flex-col">
+                                <label className="text-sm font-semibold text-gray-600 mb-1">Preço (R$)</label>
+                                <input placeholder="Ex: 39000,00" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.preco} onChange={e => setForm({...form, preco: e.target.value})} required />
+                            </div>
+                            <div className="flex flex-col md:col-span-2">
+                                <label className="text-sm font-semibold text-gray-600 mb-1">Link da Fotografia</label>
+                                <input placeholder="Cole o link da imagem aqui" className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={form.foto_url} onChange={e => setForm({...form, foto_url: e.target.value})} required />
+                            </div>
+                            <button disabled={loading} className="bg-blue-600 text-white p-4 rounded-lg font-bold text-lg hover:bg-blue-700 transition-colors md:col-span-2 mt-2 shadow-md">
+                                {loading ? 'A guardar...' : '💾 Gravar Veículo'}
+                            </button>
+                        </form>
+                    </div>
+
+                    <h2 className="text-3xl font-bold mb-6 text-gray-800">🚘 Nossa Montra</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {veiculos.length === 0 && <p className="text-gray-500 col-span-full text-center py-10 bg-white rounded-lg border">Nenhum veículo registado ainda.</p>}
+                        
                         {veiculos.map(v => (
-                            <div key={v.id} className="bg-white rounded-lg shadow-lg overflow-hidden border">
-                                {v.fotos_veiculo && v.fotos_veiculo.length > 0 ? (
-                                    <img src={v.fotos_veiculo[0].url_foto} className="w-full h-48 object-cover" />
+                            <div key={v.id} className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow flex flex-col">
+                                {v.foto_url ? (
+                                    <img src={v.foto_url} alt="Foto do veículo" className="w-full h-56 object-cover" />
                                 ) : (
-                                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">Sem Foto</div>
+                                    <div className="w-full h-56 bg-gray-200 flex items-center justify-center text-gray-400">Sem Foto</div>
                                 )}
-                                <div className="p-4">
-                                    <h3 className="text-xl font-bold">{v.marca} {v.modelo}</h3>
-                                    <p className="text-gray-600">{v.versao} • {v.ano_fabricacao}/{v.ano_modelo}</p>
-                                    <p className="text-2xl font-black text-green-700 mt-2">R$ {v.nosso_valor}</p>
+                                <div className="p-5 flex flex-col flex-grow">
+                                    <h3 className="text-xl font-black text-gray-800 uppercase">{v.marca} {v.modelo}</h3>
+                                    <p className="text-gray-500 mb-3 font-medium">Ano: {v.ano}</p>
+                                    <p className="text-3xl font-extrabold text-green-600 mb-6 mt-auto">{formatarMoeda(v.preco)}</p>
                                     
-                                    <div className="mt-4 flex flex-col gap-2">
-                                        <button onClick={() => compartilharWhatsApp(v)} className="bg-green-500 text-white py-2 rounded font-bold hover:bg-green-600 flex justify-center items-center gap-2">
-                                            📲 Enviar Cliente (WhatsApp)
-                                        </button>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => editar(v)} className="bg-yellow-500 text-white py-1 flex-1 rounded font-bold hover:bg-yellow-600">Editar</button>
-                                            <button onClick={() => apagar(v.id)} className="bg-red-500 text-white py-1 flex-1 rounded font-bold hover:bg-red-600">Apagar</button>
-                                        </div>
-                                    </div>
+                                    <button onClick={() => enviarWhatsApp(v)} className="w-full bg-green-500 text-white py-3 px-4 rounded-lg font-bold hover:bg-green-600 flex justify-center items-center gap-2 shadow-md transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                                          <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                                        </svg>
+                                        Tenho Interesse
+                                    </button>
                                 </div>
                             </div>
                         ))}
-                        {veiculos.length === 0 && !loading && <p className="text-gray-500">Nenhum veículo cadastrado ainda.</p>}
                     </div>
                 </div>
             );
