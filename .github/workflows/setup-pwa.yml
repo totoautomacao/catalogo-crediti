@@ -20,35 +20,77 @@ jobs:
       - name: Instalar conversor SVG
         run: pip install cairosvg
 
-      - name: Criar ícone vetorial
+      - name: Criar ícone vetorial limpo
         shell: bash
         run: |
           cat > icon.svg <<'SVG'
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
             <defs>
               <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ff3948"/>
-                <stop offset="1" stop-color="#e90019"/>
+                <stop offset="0" stop-color="#ff3b48"/>
+                <stop offset="0.55" stop-color="#f31328"/>
+                <stop offset="1" stop-color="#d90017"/>
               </linearGradient>
               <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#3d4b60"/>
-                <stop offset="1" stop-color="#111923"/>
+                <stop offset="0" stop-color="#465569"/>
+                <stop offset="1" stop-color="#141b25"/>
               </linearGradient>
+              <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ffffff"/>
+                <stop offset="1" stop-color="#e8edf2"/>
+              </linearGradient>
+              <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="5"/>
+              </filter>
             </defs>
-            <g transform="translate(102 132)">
-              <path fill="url(#red)" d="M52 90c10-48 42-76 74-82h56c32 6 64 34 74 82l22 18c11 9 18 23 18 38v74c0 16-13 29-29 29h-16v20c0 11-9 20-20 20h-23c-11 0-20-9-20-20v-20H120v20c0 11-9 20-20 20H77c-11 0-20-9-20-20v-20H41c-16 0-29-13-29-29v-74c0-15 7-29 18-38l22-18Z"/>
-              <path fill="url(#glass)" d="M89 89c12-34 30-53 54-58h38c24 5 42 24 54 58H89Z"/>
-              <path fill="#fff" d="M45 153c20-16 43-18 70-6l-13 32c-24 2-43-7-57-26Zm234 0c-20-16-43-18-70-6l13 32c24 2 43-7 57-26Z"/>
-              <path fill="#1b2430" d="M100 183h124l24 25-18 31H94l-18-31 24-25Z"/>
-              <path fill="#2b3442" d="M91 202h142v10H91zm8 19h124v9H99z"/>
-              <path fill="#c50014" opacity=".7" d="M56 108h212l18 17H38l18-17Z"/>
-              <rect x="43" y="218" width="45" height="28" rx="12" fill="#202934"/>
-              <rect x="236" y="218" width="45" height="28" rx="12" fill="#202934"/>
+
+            <!-- fundo branco limpo, estilo ícone iOS -->
+            <rect x="8" y="8" width="496" height="496" rx="108" fill="#ffffff"/>
+            <rect x="8" y="8" width="496" height="496" rx="108" fill="none" stroke="#f0f0f0" stroke-width="3"/>
+
+            <!-- sombra neutra, sem faixa vermelha -->
+            <ellipse cx="256" cy="392" rx="142" ry="18" fill="#000000" opacity="0.10" filter="url(#shadow)"/>
+
+            <!-- carro dentro da safe area -->
+            <g transform="translate(72 113)">
+              <!-- espelhos -->
+              <path fill="url(#red)" d="M46 119c-27-8-42-3-44 13-2 18 16 25 50 20l10-19-16-14Z"/>
+              <path fill="url(#red)" d="M322 119c27-8 42-3 44 13 2 18-16 25-50 20l-10-19 16-14Z"/>
+              <path fill="#151c25" d="M16 144c12 9 27 11 42 7l4-18-46 11Z" opacity=".92"/>
+              <path fill="#151c25" d="M352 144c-12 9-27 11-42 7l-4-18 46 11Z" opacity=".92"/>
+
+              <!-- carroceria -->
+              <path fill="url(#red)" d="M67 98c12-52 46-82 91-89h52c45 7 79 37 91 89l25 24c10 10 16 23 16 38v79c0 18-15 33-33 33H59c-18 0-33-15-33-33v-79c0-15 6-28 16-38l25-24Z"/>
+
+              <!-- para-brisa -->
+              <path fill="url(#glass)" d="M104 99c13-37 35-59 66-65h28c31 6 53 28 66 65H104Z"/>
+              <path fill="#ffffff" opacity=".11" d="M121 91c16-29 33-43 54-48h6l-46 48h-14Z"/>
+
+              <!-- capô -->
+              <path fill="#ff6972" opacity=".42" d="M92 118c26-16 158-16 184 0l-28 48H120l-28-48Z"/>
+
+              <!-- faróis -->
+              <path fill="#202832" d="M56 157c22-18 53-21 89-8l-18 42c-31 5-57-6-71-34Z"/>
+              <path fill="#202832" d="M312 157c-22-18-53-21-89-8l18 42c31 5 57-6 71-34Z"/>
+              <path fill="url(#lamp)" d="M66 158c18-11 39-12 62-5l-9 23c-22 4-40-2-53-18Z"/>
+              <path fill="url(#lamp)" d="M302 158c-18-11-39-12-62-5l9 23c22 4 40-2 53-18Z"/>
+
+              <!-- grade principal -->
+              <path fill="#151c25" d="M111 188h146l27 25-20 39H104l-20-39 27-25Z"/>
+              <path fill="#2c3542" d="M103 208h162v9H103zm6 18h150v9H109z"/>
+
+              <!-- entradas inferiores, separadas e limpas -->
+              <path fill="#202832" d="M54 219c16-6 31-6 45 1l-13 29H58c-7-8-9-18-4-30Z"/>
+              <path fill="#202832" d="M314 219c-16-6-31-6-45 1l13 29h28c7-8 9-18 4-30Z"/>
+
+              <!-- pneus -->
+              <path fill="#151c25" d="M70 255h43v23c0 13-10 23-23 23h-3c-9 0-17-7-17-17v-29Z"/>
+              <path fill="#151c25" d="M255 255h43v29c0 10-8 17-17 17h-3c-13 0-23-10-23-23v-23Z"/>
             </g>
           </svg>
           SVG
 
-      - name: Gerar PNGs do aplicativo
+      - name: Gerar PNGs nítidos do aplicativo
         run: |
           python - <<'PY'
           import cairosvg
@@ -64,45 +106,44 @@ jobs:
             "name": "Catálogo Crediti",
             "short_name": "Catálogo Crediti",
             "description": "Catálogo de veículos Crediti",
-            "start_url": "/",
+            "start_url": "/?pwa=2",
             "scope": "/",
             "display": "standalone",
             "background_color": "#ffffff",
             "theme_color": "#ffffff",
             "icons": [
-              {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
-              {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+              {"src":"/icon-192.png?v=2","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+              {"src":"/icon-512.png?v=2","sizes":"512x512","type":"image/png","purpose":"any maskable"}
             ]
           }
           JSON
 
-      - name: Criar service worker
+      - name: Atualizar service worker
         shell: bash
         run: |
           cat > sw.js <<'JS'
-          const CACHE='catalogo-crediti-v1';
+          const CACHE='catalogo-crediti-v2';
           self.addEventListener('install',()=>self.skipWaiting());
-          self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+          self.addEventListener('activate',e=>e.waitUntil((async()=>{
+            const keys=await caches.keys();
+            await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+            await self.clients.claim();
+          })()));
           self.addEventListener('fetch',()=>{});
           JS
 
-      - name: Ligar PWA ao index
+      - name: Atualizar referências do PWA no index
         run: |
           python - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          marker='<title>Catálogo Crediti</title>'
-          tags='''<title>Catálogo Crediti</title>\n<link rel="manifest" href="/manifest.webmanifest" />\n<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />\n<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />\n<meta name="apple-mobile-web-app-capable" content="yes" />\n<meta name="apple-mobile-web-app-status-bar-style" content="default" />\n<meta name="apple-mobile-web-app-title" content="Catálogo Crediti" />'''
-          if 'rel="manifest"' not in s:
-              s=s.replace(marker,tags,1)
-          register="""\n<script>\nif ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error)); }\n</script>\n"""
-          if "serviceWorker.register('/sw.js')" not in s:
-              s=s.replace('</body>',register+'</body>',1)
+          s=s.replace('href="/icon-192.png"','href="/icon-192.png?v=2"')
+          s=s.replace('href="/apple-touch-icon.png"','href="/apple-touch-icon.png?v=2"')
           p.write_text(s,encoding='utf-8')
           PY
 
-      - name: Publicar arquivos PWA
+      - name: Publicar correção do ícone PWA
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -111,6 +152,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nenhuma alteração necessária"
           else
-            git commit -m "Aplicar ícone e instalação PWA"
+            git commit -m "Corrigir ícone PWA sem faixa vermelha"
             git push
           fi
