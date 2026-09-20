@@ -1,0 +1,86 @@
+name: Aplicar ícone aprovado PWA v5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-icon-v5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar Pillow
+        run: pip install pillow
+
+      - name: Gerar ícones oficiais a partir do aprovado
+        run: |
+          python - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          src=Path('icon-approved-v5.png')
+          img=Image.open(src).convert('RGB')
+          for size,name in [(192,'icon-192.png'),(512,'icon-512.png'),(180,'apple-touch-icon.png')]:
+              img.resize((size,size),Image.Resampling.LANCZOS).save(name,optimize=True)
+          PY
+
+      - name: Atualizar manifesto
+        run: |
+          cat > manifest.webmanifest <<'JSON'
+          {
+            "id": "/",
+            "name": "Catálogo Crediti",
+            "short_name": "Catálogo Crediti",
+            "description": "Catálogo de veículos Crediti",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "portrait-primary",
+            "background_color": "#ffffff",
+            "theme_color": "#FDCA01",
+            "icons": [
+              {"src":"/icon-192.png?v=5","sizes":"192x192","type":"image/png","purpose":"any"},
+              {"src":"/icon-512.png?v=5","sizes":"512x512","type":"image/png","purpose":"any"}
+            ]
+          }
+          JSON
+
+      - name: Atualizar referências no index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'<link rel="manifest"[^>]*>', '<link rel="manifest" href="/manifest.webmanifest?v=5" />', s, count=1)
+          s=re.sub(r'<link rel="icon"[^>]*>', '<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=5" />', s, count=1)
+          s=re.sub(r'<link rel="apple-touch-icon"[^>]*>', '<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5" />', s, count=1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Atualizar cache do service worker
+        run: |
+          cat > sw.js <<'JS'
+          const CACHE='catalogo-crediti-v5';
+          self.addEventListener('install',()=>self.skipWaiting());
+          self.addEventListener('activate',event=>event.waitUntil((async()=>{
+            const keys=await caches.keys();
+            await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+            await self.clients.claim();
+          })()));
+          self.addEventListener('fetch',()=>{});
+          JS
+
+      - name: Publicar atualização
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icon-192.png icon-512.png apple-touch-icon.png manifest.webmanifest index.html sw.js
+          git commit -m "Aplicar ícone aprovado limpo no PWA v5" || exit 0
+          git push
