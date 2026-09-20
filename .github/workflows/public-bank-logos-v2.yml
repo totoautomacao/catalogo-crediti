@@ -1,0 +1,41 @@
+name: Compactar bancos no catalogo publico
+
+on:
+  push:
+    paths:
+      - '.github/workflows/public-bank-logos-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compactar bloco publico e corrigir Omni
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old='''<section className="rounded-[30px] bg-[#FDCA01] p-6 sm:p-9 soft-shadow"><span className="inline-flex px-3 py-2 rounded-full bg-black text-white text-xs font-bold">ESTOQUE CREDITI</span><h1 className="text-4xl sm:text-6xl font-extrabold tracking-[-.05em] leading-none mt-5 max-w-3xl">{CREDITI_MODO_CLIENTE?'Navegue, escolha seu veículo.':'Seu catálogo de carros e motos.'}</h1><p className="mt-4 text-black/60 font-medium">{CREDITI_MODO_CLIENTE?'Fale rapidamente com nosso vendedor para uma simulação em cinco minutos.':'Cadastre, organize e compartilhe oportunidades com seus clientes.'}</p>{CREDITI_MODO_CLIENTE&&<div className="mt-5 rounded-2xl bg-white/75 p-4"><div className="text-sm font-extrabold">Simule no banco de sua preferência</div><div className="mt-3 flex flex-wrap items-center gap-2"><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.itau.com.br&sz=128" alt="Itaú" title="Itaú" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://banco.bradesco&sz=128" alt="Bradesco" title="Bradesco" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.santander.com.br&sz=128" alt="Santander" title="Santander" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.bv.com.br&sz=128" alt="BV" title="BV" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.bancopan.com.br&sz=128" alt="Banco PAN" title="Banco PAN" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.omni.com.br&sz=128" alt="Omni" title="Omni Financeira" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.safra.com.br&sz=128" alt="Safra" title="Safra" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.vwfs.com.br&sz=128" alt="Volkswagen Financial Services" title="Volkswagen Financial Services" className="w-7 h-7 object-contain"/></span><span className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"><img src="https://www.google.com/s2/favicons?domain_url=https://www.c6bank.com.br&sz=128" alt="C6 Bank" title="C6 Bank" className="w-7 h-7 object-contain"/></span></div><div className="mt-2 text-[10px] leading-snug text-black/45 font-semibold">Financiamento sujeito à análise e às condições da instituição escolhida.</div></div>}</section>'''
+          new='''<section className={`bg-[#FDCA01] soft-shadow ${CREDITI_MODO_CLIENTE?'rounded-[22px] p-4 sm:p-5':'rounded-[30px] p-6 sm:p-9'}`}><span className={`inline-flex rounded-full bg-black text-white font-bold ${CREDITI_MODO_CLIENTE?'px-2.5 py-1.5 text-[10px]':'px-3 py-2 text-xs'}`}>ESTOQUE CREDITI</span><h1 className={`font-extrabold tracking-[-.05em] leading-none max-w-3xl ${CREDITI_MODO_CLIENTE?'text-2xl sm:text-3xl mt-3':'text-4xl sm:text-6xl mt-5'}`}>{CREDITI_MODO_CLIENTE?'Navegue, escolha seu veículo.':'Seu catálogo de carros e motos.'}</h1><p className={`${CREDITI_MODO_CLIENTE?'mt-2 text-sm leading-snug':'mt-4'} text-black/60 font-medium`}>{CREDITI_MODO_CLIENTE?'Fale rapidamente com nosso vendedor para uma simulação em cinco minutos.':'Cadastre, organize e compartilhe oportunidades com seus clientes.'}</p>{CREDITI_MODO_CLIENTE&&<div className="mt-3 pt-3 border-t border-black/10"><div className="flex items-baseline justify-between gap-2"><div className="text-[11px] font-extrabold uppercase tracking-[.05em]">Simule no banco de sua preferência</div><div className="text-[9px] text-black/40 font-semibold whitespace-nowrap">Sujeito à análise</div></div><div className="mt-2 flex items-center justify-between gap-1.5 overflow-hidden"><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.itau.com.br&sz=128" alt="Itaú" title="Itaú" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://banco.bradesco&sz=128" alt="Bradesco" title="Bradesco" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.santander.com.br&sz=128" alt="Santander" title="Santander" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.bv.com.br&sz=128" alt="BV" title="BV" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.bancopan.com.br&sz=128" alt="Banco PAN" title="Banco PAN" className="w-5 h-5 object-contain"/></span><span className="h-8 min-w-[42px] px-1 rounded-lg bg-white/90 flex items-center justify-center shrink-0" title="Omni Financeira"><span className="text-[13px] leading-none font-black italic tracking-[-.08em] text-[#123B6D]">omni</span></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.safra.com.br&sz=128" alt="Safra" title="Safra" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.vwfs.com.br&sz=128" alt="Volkswagen Financial Services" title="Volkswagen Financial Services" className="w-5 h-5 object-contain"/></span><span className="w-8 h-8 rounded-lg bg-white/90 flex items-center justify-center shrink-0"><img src="https://www.google.com/s2/favicons?domain_url=https://www.c6bank.com.br&sz=128" alt="C6 Bank" title="C6 Bank" className="w-5 h-5 object-contain"/></span></div></div>}</section>'''
+          if old not in s:
+              raise SystemExit('bloco de bancos atual nao encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validar
+        run: |
+          grep -q "min-w-\[42px\]" index.html
+          grep -q ">omni<" index.html
+          grep -q "justify-between gap-1.5 overflow-hidden" index.html
+          grep -q "text-2xl sm:text-3xl mt-3" index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Compactar bloco publico e corrigir logo Omni"
+          git push
