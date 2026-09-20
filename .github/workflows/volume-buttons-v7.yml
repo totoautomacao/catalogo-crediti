@@ -1,0 +1,29 @@
+name: Aplicar volume Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/volume-buttons-v7.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar ajuste
+        run: python3 scripts/volume_buttons_v6.py
+      - name: Validar
+        run: |
+          grep -q 'crVolDown' radio-crediti.js
+          grep -q 'ensureGain' radio-crediti.js
+          grep -q 'corsPlayable' radio-crediti.js
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Adicionar volume menos e mais na Radio Crediti"
+          git push
