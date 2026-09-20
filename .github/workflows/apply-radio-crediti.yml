@@ -1,0 +1,40 @@
+name: Aplicar Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-radio-crediti.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrar player no catalogo publico
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script defer src="/radio-crediti.js?v=1"></script>'
+          if tag not in s:
+              if '</body>' not in s:
+                  raise SystemExit('tag body nao encontrado')
+              s=s.replace('</body>',tag+'\n</body>',1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          grep -q 'radio-crediti.js?v=1' index.html
+      - name: Publicar alteracao
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "Player ja integrado"
+          else
+            git commit -m "Integrar Radio Crediti na vitrine publica"
+            git push
+          fi
