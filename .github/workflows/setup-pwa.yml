@@ -1,0 +1,116 @@
+name: Configurar PWA Catálogo Crediti
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/setup-pwa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  setup-pwa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar conversor SVG
+        run: pip install cairosvg
+
+      - name: Criar ícone vetorial
+        shell: bash
+        run: |
+          cat > icon.svg <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <defs>
+              <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#ff3948"/>
+                <stop offset="1" stop-color="#e90019"/>
+              </linearGradient>
+              <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3d4b60"/>
+                <stop offset="1" stop-color="#111923"/>
+              </linearGradient>
+            </defs>
+            <g transform="translate(102 132)">
+              <path fill="url(#red)" d="M52 90c10-48 42-76 74-82h56c32 6 64 34 74 82l22 18c11 9 18 23 18 38v74c0 16-13 29-29 29h-16v20c0 11-9 20-20 20h-23c-11 0-20-9-20-20v-20H120v20c0 11-9 20-20 20H77c-11 0-20-9-20-20v-20H41c-16 0-29-13-29-29v-74c0-15 7-29 18-38l22-18Z"/>
+              <path fill="url(#glass)" d="M89 89c12-34 30-53 54-58h38c24 5 42 24 54 58H89Z"/>
+              <path fill="#fff" d="M45 153c20-16 43-18 70-6l-13 32c-24 2-43-7-57-26Zm234 0c-20-16-43-18-70-6l13 32c24 2 43-7 57-26Z"/>
+              <path fill="#1b2430" d="M100 183h124l24 25-18 31H94l-18-31 24-25Z"/>
+              <path fill="#2b3442" d="M91 202h142v10H91zm8 19h124v9H99z"/>
+              <path fill="#c50014" opacity=".7" d="M56 108h212l18 17H38l18-17Z"/>
+              <rect x="43" y="218" width="45" height="28" rx="12" fill="#202934"/>
+              <rect x="236" y="218" width="45" height="28" rx="12" fill="#202934"/>
+            </g>
+          </svg>
+          SVG
+
+      - name: Gerar PNGs do aplicativo
+        run: |
+          python - <<'PY'
+          import cairosvg
+          for size, path in [(192,'icon-192.png'), (512,'icon-512.png'), (180,'apple-touch-icon.png')]:
+              cairosvg.svg2png(url='icon.svg', write_to=path, output_width=size, output_height=size)
+          PY
+
+      - name: Criar manifesto PWA
+        shell: bash
+        run: |
+          cat > manifest.webmanifest <<'JSON'
+          {
+            "name": "Catálogo Crediti",
+            "short_name": "Catálogo Crediti",
+            "description": "Catálogo de veículos Crediti",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#ffffff",
+            "icons": [
+              {"src":"/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+              {"src":"/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+            ]
+          }
+          JSON
+
+      - name: Criar service worker
+        shell: bash
+        run: |
+          cat > sw.js <<'JS'
+          const CACHE='catalogo-crediti-v1';
+          self.addEventListener('install',()=>self.skipWaiting());
+          self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch',()=>{});
+          JS
+
+      - name: Ligar PWA ao index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='<title>Catálogo Crediti</title>'
+          tags='''<title>Catálogo Crediti</title>\n<link rel="manifest" href="/manifest.webmanifest" />\n<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />\n<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />\n<meta name="apple-mobile-web-app-capable" content="yes" />\n<meta name="apple-mobile-web-app-status-bar-style" content="default" />\n<meta name="apple-mobile-web-app-title" content="Catálogo Crediti" />'''
+          if 'rel="manifest"' not in s:
+              s=s.replace(marker,tags,1)
+          register="""\n<script>\nif ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error)); }\n</script>\n"""
+          if "serviceWorker.register('/sw.js')" not in s:
+              s=s.replace('</body>',register+'</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Publicar arquivos PWA
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html icon.svg icon-192.png icon-512.png apple-touch-icon.png manifest.webmanifest sw.js
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração necessária"
+          else
+            git commit -m "Aplicar ícone e instalação PWA"
+            git push
+          fi
