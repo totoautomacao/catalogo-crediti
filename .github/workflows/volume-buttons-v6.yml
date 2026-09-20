@@ -1,0 +1,130 @@
+name: Volume real Radio Crediti
+
+on:
+  push:
+    paths:
+      - '.github/workflows/volume-buttons-v6.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Adicionar volume menos mais com ganho no iPhone
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('radio-crediti.js')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace("  const audio=new Audio();\n  audio.preload='none';", "  const audio=new Audio();\n  if(IS_IOS) audio.crossOrigin='anonymous';\n  audio.preload='none';", 1)
+
+          old="  let lastVolume=Math.max(.05,Math.min(1,Number(localStorage.getItem(STORAGE_VOL))||DEFAULT_VOL));\n  let muted=localStorage.getItem(STORAGE_MUTE)==='1';\n  audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;"
+          new="  let lastVolume=Math.max(.05,Math.min(1,Number(localStorage.getItem(STORAGE_VOL))||DEFAULT_VOL));\n  let muted=localStorage.getItem(STORAGE_MUTE)==='1';\n  let appVolume=muted?0:lastVolume;\n  let audioCtx=null,mediaNode=null,gainNode=null;\n  audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;"
+          if old not in s: raise SystemExit('bloco de volume inicial nao encontrado')
+          s=s.replace(old,new,1)
+
+          old_css="    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;font-size:10px;font-weight:700;color:rgba(0,0,0,.55);white-space:nowrap}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:block}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}"
+          new_css="    .cr-mute{width:32px;height:32px;border-radius:10px;background:#F2F2EE;font-size:14px;flex:0 0 auto}.cr-volume{width:86px;accent-color:#111}.cr-ios-volume{display:none;align-items:center;gap:4px}.is-ios .cr-volume{display:none}.is-ios .cr-ios-volume{display:flex}.cr-step{width:30px;height:30px;border:0;border-radius:9px;background:#111;color:#fff;font-size:18px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer}.cr-pct{min-width:34px;text-align:center;font-size:10px;font-weight:800;color:#333}.cr-close{width:28px;height:28px;border-radius:9px;background:transparent;color:#777;font-size:18px}"
+          if old_css not in s: raise SystemExit('css volume ios nao encontrado')
+          s=s.replace(old_css,new_css,1)
+
+          old_html='<span class="cr-ios-volume">Volume: botões do iPhone</span>'
+          new_html='<div class="cr-ios-volume"><button class="cr-step" id="crVolDown" aria-label="Diminuir volume">−</button><span class="cr-pct" id="crVolPct">22%</span><button class="cr-step" id="crVolUp" aria-label="Aumentar volume">+</button></div>'
+          if old_html not in s: raise SystemExit('html volume ios nao encontrado')
+          s=s.replace(old_html,new_html,1)
+
+          old_const="  const shell=document.getElementById('crShell'),btnExpand=document.getElementById('crExpand'),btnPlay=document.getElementById('crPlay'),btnMute=document.getElementById('crMute'),btnClose=document.getElementById('crClose'),volume=document.getElementById('crVolume'),status=document.getElementById('crStatus');"
+          new_const="  const shell=document.getElementById('crShell'),btnExpand=document.getElementById('crExpand'),btnPlay=document.getElementById('crPlay'),btnMute=document.getElementById('crMute'),btnClose=document.getElementById('crClose'),volume=document.getElementById('crVolume'),status=document.getElementById('crStatus'),btnVolDown=document.getElementById('crVolDown'),btnVolUp=document.getElementById('crVolUp'),volPct=document.getElementById('crVolPct');"
+          if old_const not in s: raise SystemExit('const controles nao encontrado')
+          s=s.replace(old_const,new_const,1)
+
+          old_helpers="  const setStatus=t=>status.textContent=t||'Programação variada';\n  const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};\n  function syncMute(){const off=audio.muted||(!IS_IOS&&audio.volume===0);btnMute.textContent=off?'🔇':(!IS_IOS&&audio.volume<.45?'🔉':'🔊');localStorage.setItem(STORAGE_MUTE,off?'1':'0')}"
+          new_helpers="""  const setStatus=t=>status.textContent=t||'Programação variada';
+  const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};
+  function effectiveVolume(){return IS_IOS?appVolume:(audio.muted?0:audio.volume)}
+  async function ensureGain(){
+    if(!IS_IOS)return true;
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return false;
+      if(!audioCtx){audioCtx=new AC();mediaNode=audioCtx.createMediaElementSource(audio);gainNode=audioCtx.createGain();mediaNode.connect(gainNode);gainNode.connect(audioCtx.destination)}
+      if(audioCtx.state==='suspended')await audioCtx.resume();
+      gainNode.gain.setValueAtTime(appVolume,audioCtx.currentTime);audio.muted=false;audio.volume=1;return true;
+    }catch(_){return false}
+  }
+  async function applyVolume(v){
+    v=Math.max(0,Math.min(1,Math.round(v*10)/10));
+    appVolume=v;
+    if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}
+    if(IS_IOS){const ok=await ensureGain();if(ok&&gainNode)gainNode.gain.setTargetAtTime(v,audioCtx.currentTime,.015);else audio.muted=v===0}
+    else{audio.volume=v;audio.muted=v===0;volume.value=String(Math.round(v*100))}
+    if(volPct)volPct.textContent=`${Math.round(v*100)}%`;
+    syncMute();
+  }
+  async function corsPlayable(u){
+    if(!IS_IOS)return true;
+    const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),2600);
+    try{const r=await fetch(u,{mode:'cors',cache:'no-store',signal:ctl.signal});clearTimeout(timer);ctl.abort();return !!(r&&r.ok)}catch(_){clearTimeout(timer);return false}
+  }
+  function syncMute(){const v=effectiveVolume(),off=v<=.001;btnMute.textContent=off?'🔇':v<.45?'🔉':'🔊';localStorage.setItem(STORAGE_MUTE,off?'1':'0');if(volPct)volPct.textContent=`${Math.round(v*100)}%`}"""
+          if old_helpers not in s: raise SystemExit('helpers volume nao encontrados')
+          s=s.replace(old_helpers,new_helpers,1)
+
+          s=s.replace("if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live')loadLive(false)}", "if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live'&&!IS_IOS)loadLive(false)}", 1)
+
+          old_load="  function loadLive(autoplay){const s=stations[currentIndex],u=stationUrl(s);if(!u)return;sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}if(autoplay)audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}"
+          new_load="  async function loadLive(autoplay,attempt=0){if(!stations.length)return false;if(attempt>=Math.min(stations.length,8)){setStatus('Use os botões do aparelho para o volume desta estação');return false}const s=stations[currentIndex],u=stationUrl(s);if(!u)return false;if(IS_IOS&&!(await corsPlayable(u))){currentIndex=(currentIndex+1)%stations.length;return loadLive(autoplay,attempt+1)}sourceMode='live';switching=true;audio.pause();audio.removeAttribute('src');audio.load();audio.playbackRate=1;audio.defaultPlaybackRate=1;audio.src=u;audio.load();setTimeout(()=>switching=false,420);if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Rádio Crediti',artist:'Programação variada',album:s.name||'Rádio online'})}catch(_){}}if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir'))}return true}"
+          if old_load not in s: raise SystemExit('loadLive nao encontrado')
+          s=s.replace(old_load,new_load,1)
+
+          old_off="if(autoplay)audio.play().catch(()=>setStatus('Toque em Play para ouvir offline'));return true}"
+          new_off="if(autoplay){if(IS_IOS)await ensureGain();audio.play().catch(()=>setStatus('Toque em Play para ouvir offline'))}return true}"
+          if old_off not in s: raise SystemExit('autoplay offline nao encontrado')
+          s=s.replace(old_off,new_off,1)
+
+          old_play="  btnPlay.addEventListener('click',async()=>{setOpen(true);if(!audio.paused){audio.pause();return}if(!navigator.onLine){await loadOffline(true,false);return}const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)loadLive(false);audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir')}}else{const ok=await loadOffline(true,false);if(!ok)setStatus('Rádio indisponível no momento')}});"
+          new_play="  btnPlay.addEventListener('click',async()=>{setOpen(true);if(!audio.paused){audio.pause();return}if(!navigator.onLine){await loadOffline(false,false);if(IS_IOS)await ensureGain();try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir offline')}return}const precisaLive=sourceMode!=='live'||!audio.src;if(!prepared)await fetchStations();if(prepared){if(precisaLive)await loadLive(false);if(IS_IOS)await ensureGain();audio.playbackRate=1;audio.defaultPlaybackRate=1;try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir')}}else{const ok=await loadOffline(true,false);if(!ok)setStatus('Rádio indisponível no momento')}});"
+          if old_play not in s: raise SystemExit('handler play nao encontrado')
+          s=s.replace(old_play,new_play,1)
+
+          old_mute="  btnMute.addEventListener('click',()=>{if(IS_IOS){audio.muted=!audio.muted}else if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100));audio.muted=false}else{lastVolume=audio.volume;audio.volume=0;volume.value='0';audio.muted=true}syncMute()});\n  volume.addEventListener('input',()=>{if(IS_IOS){setStatus('No iPhone, ajuste o volume pelos botões laterais');return}const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;audio.muted=v===0;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});"
+          new_mute="""  btnMute.addEventListener('click',async()=>{const v=effectiveVolume();if(v<=.001)await applyVolume(lastVolume||DEFAULT_VOL);else{lastVolume=v;await applyVolume(0)}});
+  volume.addEventListener('input',async()=>{const v=Math.max(0,Math.min(1,Number(volume.value)/100));await applyVolume(v)});
+  if(btnVolDown)btnVolDown.addEventListener('click',async()=>{await applyVolume(effectiveVolume()-.1)});
+  if(btnVolUp)btnVolUp.addEventListener('click',async()=>{await applyVolume(effectiveVolume()+.1)});"""
+          if old_mute not in s: raise SystemExit('handlers volume antigos nao encontrados')
+          s=s.replace(old_mute,new_mute,1)
+
+          s=s.replace("  syncMute();syncPlay();setOpen(false);", "  if(volPct)volPct.textContent=`${Math.round(effectiveVolume()*100)}%`;syncMute();syncPlay();setOpen(false);", 1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+          grep -q 'crVolDown' radio-crediti.js
+          grep -q 'ensureGain' radio-crediti.js
+          grep -q 'corsPlayable' radio-crediti.js
+      - name: Atualizar cache do script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if re.search(r'/radio-crediti\.js\?v=\d+',s):
+              s=re.sub(r'/radio-crediti\.js\?v=\d+','/radio-crediti.js?v=6',s,count=1)
+          elif '/radio-crediti.js' in s:
+              s=s.replace('/radio-crediti.js','/radio-crediti.js?v=6',1)
+          else:
+              raise SystemExit('script radio nao encontrado')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add radio-crediti.js index.html
+          git commit -m "Adicionar volume menos e mais na Radio Crediti"
+          git push
