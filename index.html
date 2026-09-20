@@ -17,9 +17,9 @@
         const { useState, useEffect } = React;
         const { createClient } = supabase;
 
-        // ⚠️ COLOQUE AS SUAS CHAVES AQUI:
-        const supabaseUrl = 'SUA_URL_DO_SUPABASE';
-        const supabaseKey = 'SUA_CHAVE_ANONIMA';
+        // Configuração automática das suas credenciais
+        const supabaseUrl = 'https://jfguumxlxmveuszddyky.supabase.co';
+        const supabaseKey = 'sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
         const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
         function App() {
@@ -37,7 +37,6 @@
             async function adicionarVeiculo(e) {
                 e.preventDefault();
                 setLoading(true);
-                // Converte vírgula para ponto e guarda como número
                 const precoFormatado = parseFloat(form.preco.replace(/\./g, '').replace(',', '.'));
                 
                 await supabaseClient.from('veiculos').insert([{ ...form, preco: precoFormatado }]);
@@ -47,14 +46,12 @@
                 alert("Veículo guardado com sucesso!");
             }
 
-            // Função que deixa o preço como R$ 39.000,00
             function formatarMoeda(valor) {
                 return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
             }
 
             function enviarWhatsApp(veiculo) {
                 const texto = `Olá! Vi o ${veiculo.marca} ${veiculo.modelo} (${veiculo.ano}) no Catálogo Crediti por ${formatarMoeda(veiculo.preco)} e tenho interesse.`;
-                // Altere o número 55000000000 para o seu número de WhatsApp com código de país e área
                 window.open(`https://wa.me/55000000000?text=${encodeURIComponent(texto)}`, '_blank');
             }
 
