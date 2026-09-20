@@ -1,0 +1,115 @@
+name: Reparar instalação PWA Catálogo Crediti
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/reparar-pwa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reparar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Usar ícone aprovado nos nomes padrão
+        run: |
+          cp icon-192-v4.png icon-192.png
+          cp icon-512-v4.png icon-512.png
+          cp apple-touch-icon-v4.png apple-touch-icon.png
+
+      - name: Restaurar manifesto instalável
+        run: |
+          cat > manifest.webmanifest <<'JSON'
+          {
+            "id": "/",
+            "name": "Catálogo Crediti",
+            "short_name": "Crediti",
+            "description": "Catálogo de veículos Crediti",
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "portrait-primary",
+            "background_color": "#ffffff",
+            "theme_color": "#FDCA01",
+            "icons": [
+              {
+                "src": "/icon-192.png",
+                "sizes": "192x192",
+                "type": "image/png",
+                "purpose": "any"
+              },
+              {
+                "src": "/icon-512.png",
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any"
+              }
+            ]
+          }
+          JSON
+
+      - name: Corrigir referências no index
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'<link rel="manifest"[^>]*>', '<link rel="manifest" href="/manifest.webmanifest">', s)
+          s=re.sub(r'<link rel="icon"[^>]*>', '<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">', s)
+          s=re.sub(r'<link rel="apple-touch-icon"[^>]*>', '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">', s)
+          s=s.replace('<meta name="theme-color" content="#ffffff" />','<meta name="theme-color" content="#FDCA01" />')
+          s=s.replace('<meta name="theme-color" content="#ffffff">','<meta name="theme-color" content="#FDCA01">')
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Service worker simples e estável
+        run: |
+          cat > sw.js <<'JS'
+          self.addEventListener('install', event => {
+            self.skipWaiting();
+          });
+
+          self.addEventListener('activate', event => {
+            event.waitUntil((async () => {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(key => caches.delete(key)));
+              await self.clients.claim();
+            })());
+          });
+
+          self.addEventListener('fetch', event => {
+            event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+          });
+          JS
+
+      - name: Garantir registro do service worker
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          import re
+          s=re.sub(r"navigator\.serviceWorker\.register\('/sw\.js[^']*'\)", "navigator.serviceWorker.register('/sw.js')", s)
+          if "navigator.serviceWorker.register('/sw.js')" not in s:
+              script="""\n<script>\nif ('serviceWorker' in navigator) {\n  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error));\n}\n</script>\n"""
+              s=s.replace('</body>',script+'</body>',1)
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Publicar reparo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html manifest.webmanifest sw.js icon-192.png icon-512.png apple-touch-icon.png
+          if git diff --cached --quiet; then
+            echo "Sem alterações"
+          else
+            git commit -m "Reparar instalação PWA com ícone aprovado"
+            git push
+          fi
