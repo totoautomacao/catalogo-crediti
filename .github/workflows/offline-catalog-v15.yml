@@ -1,0 +1,31 @@
+name: Ativar catalogo offline imediato
+
+on:
+  push:
+    paths:
+      - '.github/workflows/offline-catalog-v15.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar modo offline-first
+        run: python3 scripts/enable_offline_catalog.py
+      - name: Validar alteracoes
+        run: |
+          grep -q "crediti-catalogo-offline-v2" index.html
+          grep -q "crediti-fotos-v2" sw.js
+          grep -q "catalogo-crediti-v11" sw.js
+          grep -q "CACHE_VEHICLE_IMAGES" sw.js
+          grep -q "aoVoltarInternet" index.html
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js
+          git commit -m "Abrir catalogo instantaneamente e offline"
+          git push
