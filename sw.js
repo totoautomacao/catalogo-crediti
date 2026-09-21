@@ -1,10 +1,20 @@
-const CORE='catalogo-crediti-v17';
-const MUSIC='crediti-radio-offline-v1';
+const CORE='catalogo-crediti-v18';
+const MUSIC='crediti-radio-offline-v2';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
 const CORE_FILES=['/','/index.html','/radio-crediti.js','/manifest.webmanifest','/manifest-cliente.webmanifest','/icon-crediti-192-v20.png','/icon-crediti-512-v20.png','/apple-touch-icon-crediti-v20.png','/apple-touch-icon.png','/bank-itau.png','/bank-bradesco.png','/bank-santander.png','/bank-bv.png','/bank-pan.png','/omni-logo-crediti.png','/bank-safra.png','/bank-volkswagen.png','/bank-c6.png','/app.js','/tailwind.css'];
 const VENDOR_FILES=[];
+const OFFLINE_AUDIO=[
+'/offline-audio/duru-roomscene-lofi.mp3',
+'/offline-audio/duru-arcade-vibe.mp3',
+'/offline-audio/duru-denparcade.mp3',
+'/offline-audio/duru-rhythm-fever.mp3',
+'/offline-audio/duru-rondo.mp3',
+'/offline-audio/duru-winter-arcade.mp3',
+'/offline-audio/duru-ai-ep2-music.mp3',
+'/offline-audio/hyak-ep1-rhythm.mp3'
+];
 
 async function cacheExternal(cacheName,url){try{const c=await caches.open(cacheName);if(await c.match(url))return;const r=await fetch(new Request(url,{mode:'no-cors',cache:'reload'}));if(r)await c.put(url,r.clone())}catch(_){}}
 async function staleWhileRevalidate(req,cacheName){const c=await caches.open(cacheName);const hit=await c.match(req);const net=fetch(req).then(async r=>{if(r&&(r.ok||r.type==='opaque'))await c.put(req,r.clone());return r}).catch(()=>null);if(hit){net.catch(()=>{});return hit}return (await net)||Response.error()}
@@ -50,11 +60,12 @@ async function serveOfflineAudio(req){
   }catch(_){return full}
 }
 
-self.addEventListener('install',event=>event.waitUntil((async()=>{try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}await Promise.allSettled(VENDOR_FILES.map(u=>cacheExternal(VENDOR,u)));await self.skipWaiting()})()));
+self.addEventListener('install',event=>event.waitUntil((async()=>{try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}try{const m=await caches.open(MUSIC);await Promise.allSettled(OFFLINE_AUDIO.map(async u=>{try{const r=await fetch(u,{cache:'reload'});if(r&&r.ok)await m.put(u,r.clone())}catch(_){}}))}catch(_){}await Promise.allSettled(VENDOR_FILES.map(u=>cacheExternal(VENDOR,u)));await self.skipWaiting()})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>(k.startsWith('catalogo-crediti-v')&&k!==CORE)||(k.startsWith('crediti-vendor-v')&&k!==VENDOR)||(k.startsWith('crediti-fotos-v')&&k!==PHOTOS)||(k.startsWith('crediti-api-v')&&k!==API)).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener('message',event=>{if(event.data?.type==='CACHE_VEHICLE_IMAGES'&&Array.isArray(event.data.urls)){const urls=[...new Set(event.data.urls)];event.waitUntil(Promise.allSettled(urls.map(u=>cacheExternal(PHOTOS,u))))}});
 self.addEventListener('fetch',event=>{
  const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);
+ if(url.origin===self.location.origin&&url.pathname.startsWith('/offline-audio/')){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
  if(url.origin===self.location.origin&&url.pathname==='/api/offline-audio'){event.respondWith(serveOfflineAudio(req));return}
  if(req.destination==='audio'||url.hostname==='en.freepd.cn'){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
  if(req.mode==='navigate'){

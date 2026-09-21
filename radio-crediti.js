@@ -8,17 +8,16 @@
     'https://nl1.api.radio-browser.info',
     'https://at1.api.radio-browser.info'
   ];
-  const OFFLINE_CACHE='crediti-radio-offline-v1';
-  const p=(c,n)=>{
-    const remote='https://en.freepd.cn/api/music/'+Array.from(new TextEncoder().encode(c+'/'+n+'.mp3')).map(b=>b.toString(16).padStart(2,'0')).join('');
-    return{title:n,style:c,remote,url:'/api/offline-audio?src='+encodeURIComponent(remote)};
-  };
+  const OFFLINE_CACHE='crediti-radio-offline-v2';
   const OFFLINE_PLAYLIST=[
-    ...['3 am West End','Arpent','Backbeat','Beat One','Beat Thee','Bit Bit Loop','Chronos','Favorite','Fireworks','Goodnightmare','Hear What They Say','Hippety Hop'].map(n=>p('Electronic',n)),
-    ...['A Very Brady Special','Amazing Grace','Brothers Unite',"Burt's Requiem",'Champ de tournesol','Horizon Flare','Isolation Waltz','La Citadelle',"Landra's Dream",'Lovely Piano Song','Lucky Break','Night in Venice'].map(n=>p('Romance',n)),
-    ...['Advertime','And Just Like That','Bar Brawl','Be Chillin','City Sunshine','From Page to Practice','Funshine','Happy Whistling Ukulele','Inspiration','Inventing Flight','Limit 70','Motions'].map(n=>p('Upbeat',n)),
-    ...['Ambient Bongos','Aquatic City Vanished','Bavarian Seascape','Be Jammin','Blacksmith','Blood Eagle','Bollywood Groove','Bonfire','Breaking Bollywood','Connecting Rainbows','Coy Koi','Cumbish'].map(n=>p('World',n)),
-    ...['Alls Fair In Love','Vintage Party'].map(n=>p('Comedy',n))
+    {title:'Duru Roomscene Lo-fi',style:'Lo-fi',url:'/offline-audio/duru-roomscene-lofi.mp3'},
+    {title:'Duru Arcade Vibe',style:'Arcade',url:'/offline-audio/duru-arcade-vibe.mp3'},
+    {title:'Duru Denparcade',style:'Eletrônica',url:'/offline-audio/duru-denparcade.mp3'},
+    {title:'Duru Rhythm Fever',style:'Dance',url:'/offline-audio/duru-rhythm-fever.mp3'},
+    {title:'Duru Rondo',style:'Instrumental',url:'/offline-audio/duru-rondo.mp3'},
+    {title:'Duru Winter Arcade',style:'Eletrônica',url:'/offline-audio/duru-winter-arcade.mp3'},
+    {title:'Duru AI Music',style:'Instrumental',url:'/offline-audio/duru-ai-ep2-music.mp3'},
+    {title:'Hyak Rhythm',style:'Ritmo',url:'/offline-audio/hyak-ep1-rhythm.mp3'}
   ];
 
   const STORAGE_VOL='crediti_radio_volume_v1';
@@ -109,10 +108,7 @@
     if(!('caches'in window))return[];
     try{
       const cache=await caches.open(OFFLINE_CACHE),out=[];
-      for(const t of OFFLINE_PLAYLIST){
-        if(await cache.match(t.url)){out.push({...t,playUrl:t.url});continue}
-        if(await cache.match(t.remote))out.push({...t,playUrl:t.remote,legacy:true});
-      }
+      for(const t of OFFLINE_PLAYLIST){if(await cache.match(t.url))out.push({...t,playUrl:t.url})}
       return out;
     }catch(_){return[]}
   }
@@ -124,26 +120,25 @@
       const cache=await caches.open(OFFLINE_CACHE);let done=0;
       for(const t of OFFLINE_PLAYLIST){
         try{
-          const existing=await cache.match(t.url);
-          if(existing){done++;continue}
-          const r=await fetch(t.url,{cache:'no-store'});
-          if(r&&r.ok&&r.status===200){await cache.put(t.url,r.clone());done++}
+          if(await cache.match(t.url)){done++;continue}
+          const r=await fetch(t.url,{cache:'reload'});
+          if(r&&r.ok){await cache.put(t.url,r.clone());done++}
         }catch(_){}
-        if(expanded&&audio.paused)setStatus(`Offline ${done}/50 salvo`);
-        await sleep(done<8?40:100);
+        if(expanded&&audio.paused)setStatus(`Offline ${done}/${OFFLINE_PLAYLIST.length} salvo`);
+        await sleep(80)
       }
     }catch(_){}
-    cacheStarted=false;
+    cacheStarted=false
   }
 
   async function loadOffline(autoplay,advance=false){
     clearTimeout(liveFallbackTimer);
     const available=await cachedTracks();
-    if(!available.length){setStatus('Playlist offline ainda não foi salva');syncPlay();return false}
+    if(!available.length){setStatus('Playlist offline ainda está sendo preparada');syncPlay();return false}
     if(advance)offlineIndex=(offlineIndex+1)%available.length;else offlineIndex=Math.min(offlineIndex,available.length-1);
     const t=available[offlineIndex];
     stopSource();sourceMode='offline';audio.src=t.playUrl||t.url;audio.load();setStatus(`Offline • ${t.title}`);
-    if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:'Rádio Crediti Offline',album:'Playlist grátis CC0'})}catch(_){}}
+    if('mediaSession'in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:'Rádio Crediti Offline',album:'Playlist local CC0'})}catch(_){}}
     if(autoplay){try{await audio.play()}catch(_){setStatus('Toque novamente em Play para ouvir offline')}}
     return true;
   }
@@ -151,7 +146,7 @@
   async function fallbackToOffline(autoplay=true){
     if(sourceMode==='offline')return;
     const ok=await loadOffline(autoplay,false);
-    if(!ok)setStatus(navigator.onLine?'Sem rádio online e sem playlist salva':'Sem internet • playlist não salva');
+    if(!ok)setStatus(navigator.onLine?'Sem rádio online e sem playlist salva':'Sem internet • abra uma vez online para preparar o offline');
   }
   async function switchToOffline(){const wasPlaying=!audio.paused;await loadOffline(wasPlaying,false);if(!wasPlaying)syncPlay()}
   async function switchToLive(){if(!navigator.onLine)return;const wasPlaying=!audio.paused;const ok=await fetchStations();if(ok){sourceMode='live';loadLive(wasPlaying)}}
@@ -212,6 +207,6 @@
   if('mediaSession'in navigator){try{navigator.mediaSession.setActionHandler('play',()=>btnPlay.click());navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('nexttrack',()=>sourceMode==='offline'?loadOffline(true,true):tryNextLive())}catch(_){}}
 
   syncMute();syncPlay();setOpen(false);
-  cachedTracks().then(list=>{if(!navigator.onLine)setStatus(list.length?`Offline • ${list.length} músicas salvas`:'Offline ainda não baixado')});
+  cachedTracks().then(list=>{if(!navigator.onLine)setStatus(list.length?`Offline pronto • ${list.length} músicas`:'Offline ainda não baixado')});
   if(navigator.onLine){fetchStations();setTimeout(cacheOfflinePlaylist,1200)}else sourceMode='offline';
 })();
