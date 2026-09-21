@@ -10,7 +10,17 @@
   "background_color": "#ffffff",
   "theme_color": "#FDCA01",
   "icons": [
-    {"src":"/icon-exact-192-v7.png","sizes":"192x192","type":"image/png","purpose":"any"},
-    {"src":"/icon-exact-512-v7.png","sizes":"512x512","type":"image/png","purpose":"any"}
+    {
+      "src": "/icon-crediti-192-v20.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-crediti-512-v20.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

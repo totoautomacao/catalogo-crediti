@@ -6,3 +6,11 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
+/manifest.webmanifest
+  Cache-Control: no-cache, no-store, must-revalidate
+/manifest-cliente.webmanifest
+  Cache-Control: no-cache, no-store, must-revalidate
+/apple-touch-icon.png
+  Cache-Control: no-cache, no-store, must-revalidate
+/apple-touch-icon-crediti-v20.png
+  Cache-Control: no-cache, no-store, must-revalidate
