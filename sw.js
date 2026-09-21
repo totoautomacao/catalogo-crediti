@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v24';
+const CORE='catalogo-crediti-v25';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
@@ -85,6 +85,11 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
+  // O stream ao vivo do iPhone não pode ser colocado em cache nem bufferizado pelo service worker.
+  if(url.origin===self.location.origin&&url.pathname==='/api/radio'){
+    return;
+  }
+
   if(url.origin===self.location.origin&&url.pathname==='/radio-crediti.js'){
     event.respondWith(networkFirst(req,CORE));
     return;
@@ -110,5 +115,5 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  // Streams de rádio ao vivo ficam fora do service worker e usam a internet diretamente.
+  // Streams externos de rádio ao vivo usam a internet diretamente.
 });
