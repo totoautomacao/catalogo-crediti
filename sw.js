@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v19';
+const CORE='catalogo-crediti-v20';
 const MUSIC='crediti-radio-offline-v2';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
@@ -23,26 +23,20 @@ async function serveOfflineAudio(req){
   const cache=await caches.open(MUSIC);
   const key=new Request(req.url,{method:'GET'});
   let full=await cache.match(key);
-
   if(!full){
     try{
       const net=await fetch(key,{cache:'no-store'});
-      if(net&&net.ok){
-        if(net.status===200) await cache.put(key,net.clone());
-        full=net;
-      }
+      if(net&&net.ok){if(net.status===200)await cache.put(key,net.clone());full=net}
     }catch(_){}
   }
-  if(!full) return Response.error();
-
+  if(!full)return Response.error();
   const range=req.headers.get('range');
-  if(!range || full.status!==200) return full;
-
+  if(!range||full.status!==200)return full;
   try{
     const buffer=await full.clone().arrayBuffer();
     const size=buffer.byteLength;
     const match=/bytes=(\d*)-(\d*)/.exec(range);
-    if(!match) return full;
+    if(!match)return full;
     let start=match[1]?Number(match[1]):0;
     let end=match[2]?Number(match[2]):size-1;
     if(!match[1]&&match[2]){const suffix=Number(match[2]);start=Math.max(0,size-suffix);end=size-1}
@@ -60,14 +54,24 @@ async function serveOfflineAudio(req){
   }catch(_){return full}
 }
 
-self.addEventListener('install',event=>event.waitUntil((async()=>{try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}try{const m=await caches.open(MUSIC);await Promise.allSettled(OFFLINE_AUDIO.map(async u=>{try{const r=await fetch(u,{cache:'reload'});if(r&&r.ok)await m.put(u,r.clone())}catch(_){}}))}catch(_){}await Promise.allSettled(VENDOR_FILES.map(u=>cacheExternal(VENDOR,u)));await self.skipWaiting()})()));
-self.addEventListener('activate',event=>event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>(k.startsWith('catalogo-crediti-v')&&k!==CORE)||(k.startsWith('crediti-radio-offline-v')&&k!==MUSIC)||(k.startsWith('crediti-vendor-v')&&k!==VENDOR)||(k.startsWith('crediti-fotos-v')&&k!==PHOTOS)||(k.startsWith('crediti-api-v')&&k!==API)).map(k=>caches.delete(k)));await self.clients.claim()})()));
+self.addEventListener('install',event=>event.waitUntil((async()=>{
+  try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}
+  try{const m=await caches.open(MUSIC);await Promise.allSettled(OFFLINE_AUDIO.map(async u=>{try{const r=await fetch(u,{cache:'reload'});if(r&&r.ok)await m.put(u,r.clone())}catch(_){}}))}catch(_){}
+  await Promise.allSettled(VENDOR_FILES.map(u=>cacheExternal(VENDOR,u)));
+  await self.skipWaiting();
+})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(k=>(k.startsWith('catalogo-crediti-v')&&k!==CORE)||(k.startsWith('crediti-radio-offline-v')&&k!==MUSIC)||(k.startsWith('crediti-vendor-v')&&k!==VENDOR)||(k.startsWith('crediti-fotos-v')&&k!==PHOTOS)||(k.startsWith('crediti-api-v')&&k!==API)).map(k=>caches.delete(k)));
+  await self.clients.claim();
+})()));
 self.addEventListener('message',event=>{if(event.data?.type==='CACHE_VEHICLE_IMAGES'&&Array.isArray(event.data.urls)){const urls=[...new Set(event.data.urls)];event.waitUntil(Promise.allSettled(urls.map(u=>cacheExternal(PHOTOS,u))))}});
 self.addEventListener('fetch',event=>{
  const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);
+ // Somente as faixas locais passam pelo cache de música. Streams de rádio online ficam livres.
  if(url.origin===self.location.origin&&url.pathname.startsWith('/offline-audio/')){event.respondWith(serveOfflineAudio(req));return}
  if(url.origin===self.location.origin&&url.pathname==='/api/offline-audio'){event.respondWith(serveOfflineAudio(req));return}
- if(req.destination==='audio'||url.hostname==='en.freepd.cn'){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
+ if(url.hostname==='en.freepd.cn'){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
  if(req.mode==='navigate'){
   event.respondWith((async()=>{
    try{
