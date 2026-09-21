@@ -2,14 +2,15 @@
   const qs=new URLSearchParams(location.search);
   if(qs.get('cliente')!=='1'||document.getElementById('crediti-radio-root'))return;
 
-  // Streams diretos e HTTPS verificados para tocar no navegador sem depender de busca externa.
+  // Mesma lista de rádios em Android, iPhone e computador.
+  // No iPhone o áudio passa pelo próprio domínio para evitar incompatibilidades do Safari com alguns streams externos.
   const STATIONS=[
     {name:'Rádio Clube 105.5 FM',url:'https://8157.brasilstream.com.br/stream'},
-    {name:'Massa FM 101.1',url:'https://stm01.virtualcast.com.br:8160/massapontagrossa'},
     {name:'Antena 1',url:'https://antenaone.crossradio.com.br/stream/1'},
     {name:'Jovem Pan BH',url:'https://8062.brasilstream.com.br/mp3'},
-    {name:'MGT Forró',url:'https://cast.mgtradio.net/radio/8050/aac'},
-    {name:'Rádio Viva O Samba',url:'https://servidor33-3.brlogic.com:8020/live'}
+    {name:'Rádio Jangadeiro 88.9 FM',url:'https://stream.zeno.fm/xuh02vfzurhvv'},
+    {name:'Classic Pan 76.7 FM',url:'https://stream.zeno.fm/rtk4pzcome3vv'},
+    {name:'Jovem Pan FM 100.9',url:'https://stream.zeno.fm/c45wbq2us3buv'}
   ];
 
   const STORAGE_VOL='crediti_radio_volume_v1';
@@ -17,8 +18,10 @@
   const DEFAULT_VOL=.22;
   const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   const audio=new Audio();
-  audio.preload='none';
+  audio.preload='auto';
   audio.playsInline=true;
+  audio.setAttribute('playsinline','');
+  audio.setAttribute('webkit-playsinline','true');
 
   let currentIndex=0;
   let expanded=false;
@@ -75,6 +78,10 @@
   const setStatus=t=>status.textContent=t;
   const setOpen=v=>{expanded=!!v;shell.classList.toggle('is-open',expanded)};
   const currentStation=()=>STATIONS[currentIndex%STATIONS.length];
+  const streamUrl=index=>{
+    const i=((index%STATIONS.length)+STATIONS.length)%STATIONS.length;
+    return IS_IOS?`/api/radio?i=${i}&v=25`:STATIONS[i].url;
+  };
 
   function syncMute(){
     const off=audio.muted||(!IS_IOS&&audio.volume===0);
@@ -114,7 +121,7 @@
     clearConnectTimer();
     switching=true;
     try{audio.pause()}catch(_){}
-    audio.src=station.url;
+    audio.src=streamUrl(currentIndex);
     try{audio.load()}catch(_){}
     switching=false;
     setStatus(`Conectando • ${station.name}`);
@@ -137,7 +144,7 @@
       const onError=()=>finish(false);
       audio.addEventListener('playing',onPlaying,{once:true});
       audio.addEventListener('error',onError,{once:true});
-      connectTimer=setTimeout(()=>finish(false),6500);
+      connectTimer=setTimeout(()=>finish(false),IS_IOS?10000:6500);
       audio.play().catch(()=>finish(false));
     });
   }
