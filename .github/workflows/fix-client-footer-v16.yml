@@ -1,0 +1,44 @@
+name: Corrigir final do catalogo cliente
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-client-footer-v16.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Ajustar rodape e rolagem
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('index.html')
+          s=p.read_text()
+          old='return <div className="min-h-screen pb-16">'
+          new='return <div className={CREDITI_MODO_CLIENTE?"min-h-screen pb-0":"min-h-screen pb-16"}>'
+          if old not in s:
+              raise SystemExit('Trecho do rodape principal nao encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('radio-crediti.js')
+          s=p.read_text()
+          old="document.body.style.paddingBottom='calc(24px + env(safe-area-inset-bottom))';"
+          new="document.body.style.paddingBottom='calc(18px + env(safe-area-inset-bottom))';document.documentElement.style.overscrollBehaviorY='none';document.body.style.overscrollBehaviorY='none';"
+          if old not in s:
+              raise SystemExit('Trecho do respiro da radio nao encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Publicar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html radio-crediti.js
+          git commit -m "Finalizar catalogo junto ao ultimo veiculo" || exit 0
+          git push origin main
