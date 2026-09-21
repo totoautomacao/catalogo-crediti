@@ -16,27 +16,23 @@ jobs:
           from pathlib import Path
           import urllib.request, json, time
 
+          base='https://raw.githubusercontent.com/uncle-sheepsky/duru-ai-cc0-bgm/main/mp3/'
           tracks = [
-            ('Comedy','Alls Fair In Love','01-alls-fair-in-love.mp3'),
-            ('Comedy','Silly Intro','02-silly-intro.mp3'),
-            ('Comedy','Vintage Party','03-vintage-party.mp3'),
-            ('Electronic','3 am West End','04-3-am-west-end.mp3'),
-            ('Electronic','Arpent','05-arpent.mp3'),
-            ('Electronic','Backbeat','06-backbeat.mp3'),
-            ('Romance','Amazing Grace','07-amazing-grace.mp3'),
-            ('Romance','Lovely Piano Song','08-lovely-piano-song.mp3'),
-            ('Upbeat','Advertime','09-advertime.mp3'),
-            ('Upbeat','City Sunshine','10-city-sunshine.mp3'),
-            ('World','Ambient Bongos','11-ambient-bongos.mp3'),
-            ('World','Bollywood Groove','12-bollywood-groove.mp3'),
+            ('Lo-fi','Duru Roomscene Lo-fi','duru-roomscene-lofi.mp3'),
+            ('Arcade','Duru Arcade Vibe','duru-arcade-vibe.mp3'),
+            ('Eletrônica','Duru Denparcade','duru-denparcade.mp3'),
+            ('Dance','Duru Rhythm Fever','duru-rhythm-fever.mp3'),
+            ('Instrumental','Duru Rondo','duru-rondo.mp3'),
+            ('Eletrônica','Duru Winter Arcade','duru-winter-arcade.mp3'),
+            ('Instrumental','Duru AI Music','duru-ai-ep2-music.mp3'),
+            ('Ritmo','Hyak Rhythm','hyak-ep1-rhythm.mp3'),
           ]
           out = Path('offline-audio')
           out.mkdir(exist_ok=True)
           manifest=[]
-          for category,title,filename in tracks:
-              encoded=(category+'/'+title+'.mp3').encode().hex()
-              url='https://en.freepd.cn/api/music/'+encoded
-              dest=out/filename
+          for category,title,source in tracks:
+              url=base+source
+              dest=out/source
               print('Baixando', title)
               req=urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
               with urllib.request.urlopen(req, timeout=90) as r, open(dest,'wb') as f:
@@ -44,10 +40,13 @@ jobs:
                   if len(data)<50000:
                       raise RuntimeError(f'Arquivo muito pequeno para {title}: {len(data)} bytes')
                   f.write(data)
-              manifest.append({'title':title,'category':category,'file':'/offline-audio/'+filename,'bytes':dest.stat().st_size})
+              manifest.append({'title':title,'category':category,'file':'/offline-audio/'+source,'bytes':dest.stat().st_size})
               time.sleep(.2)
           (out/'playlist.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
-          (out/'README.txt').write_text('Pacote offline da Rádio Crediti. Faixas oriundas da biblioteca FreePD, indicada como domínio público/CC0 em https://en.freepd.cn/music\n', encoding='utf-8')
+          (out/'README.txt').write_text(
+            'Pacote offline da Rádio Crediti. Faixas CC0 do projeto duru-ai-cc0-bgm. Fonte: https://github.com/uncle-sheepsky/duru-ai-cc0-bgm\n',
+            encoding='utf-8'
+          )
           print('Faixas prontas:', len(manifest), 'Total bytes:', sum(x['bytes'] for x in manifest))
           PY
       - name: Commitar pacote offline
@@ -56,5 +55,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add offline-audio
           git diff --cached --quiet && exit 0
-          git commit -m "Adicionar pacote de musicas offline da Radio Crediti"
+          git commit -m "Adicionar pacote local CC0 da Radio Crediti"
           git push
