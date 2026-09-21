@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v22';
+const CORE='catalogo-crediti-v23';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
