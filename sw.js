@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v23';
+const CORE='catalogo-crediti-v24';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
@@ -23,6 +23,17 @@ async function staleWhileRevalidate(req,cacheName){
   }).catch(()=>null);
   if(hit){net.catch(()=>{});return hit}
   return (await net)||Response.error();
+}
+
+async function networkFirst(req,cacheName){
+  const c=await caches.open(cacheName);
+  try{
+    const fresh=await fetch(req,{cache:'no-store'});
+    if(fresh&&fresh.ok)await c.put(req,fresh.clone());
+    return fresh;
+  }catch(_){
+    return (await c.match(req))||Response.error();
+  }
 }
 
 self.addEventListener('install',event=>event.waitUntil((async()=>{
@@ -71,6 +82,11 @@ self.addEventListener('fetch',event=>{
       }catch(_){}
       return (await caches.match('/index.html'))||(await caches.match('/'))||Response.error();
     })());
+    return;
+  }
+
+  if(url.origin===self.location.origin&&url.pathname==='/radio-crediti.js'){
+    event.respondWith(networkFirst(req,CORE));
     return;
   }
 
