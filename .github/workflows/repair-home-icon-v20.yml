@@ -1,0 +1,58 @@
+name: Reparar icone da tela inicial v20
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-home-icon-v20.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair-icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Criar novos arquivos de icone sem cache antigo
+        run: |
+          cp icon-exact-192-v7.png icon-crediti-192-v20.png
+          cp icon-exact-512-v7.png icon-crediti-512-v20.png
+          cp apple-touch-icon-exact-v7.png apple-touch-icon-crediti-v20.png
+          cp apple-touch-icon-exact-v7.png apple-touch-icon.png
+      - name: Atualizar pagina e manifestos
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          s=re.sub(r'<link rel="icon"[^>]*>', '<link rel="icon" type="image/png" sizes="192x192" href="/icon-crediti-192-v20.png" />', s, count=1)
+          s=re.sub(r'<link rel="apple-touch-icon"[^>]*>', '<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-crediti-v20.png" />', s, count=1)
+          p.write_text(s,encoding='utf-8')
+          for fn,start in [('manifest.webmanifest','/'),('manifest-cliente.webmanifest','/?cliente=1')]:
+              q=Path(fn)
+              data=json.loads(q.read_text(encoding='utf-8'))
+              data['icons']=[
+                {'src':'/icon-crediti-192-v20.png','sizes':'192x192','type':'image/png','purpose':'any'},
+                {'src':'/icon-crediti-512-v20.png','sizes':'512x512','type':'image/png','purpose':'any'}
+              ]
+              if fn=='manifest-cliente.webmanifest': data['start_url']='/?cliente=1'
+              q.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          sw=Path('sw.js')
+          w=sw.read_text(encoding='utf-8')
+          w=re.sub(r"const CORE='catalogo-crediti-v\d+';", "const CORE='catalogo-crediti-v16';", w, count=1)
+          w=w.replace("'/icon-exact-192-v7.png','/icon-exact-512-v7.png','/apple-touch-icon-exact-v7.png'", "'/icon-crediti-192-v20.png','/icon-crediti-512-v20.png','/apple-touch-icon-crediti-v20.png','/apple-touch-icon.png'")
+          sw.write_text(w,encoding='utf-8')
+          h=Path('_headers')
+          txt=h.read_text(encoding='utf-8') if h.exists() else ''
+          extra='''\n/manifest.webmanifest\n  Cache-Control: no-cache, no-store, must-revalidate\n/manifest-cliente.webmanifest\n  Cache-Control: no-cache, no-store, must-revalidate\n/apple-touch-icon.png\n  Cache-Control: no-cache, no-store, must-revalidate\n/apple-touch-icon-crediti-v20.png\n  Cache-Control: no-cache, no-store, must-revalidate\n'''
+          if '/apple-touch-icon-crediti-v20.png' not in txt:
+              h.write_text(txt.rstrip()+extra,encoding='utf-8')
+          PY
+      - name: Publicar correcao
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html manifest.webmanifest manifest-cliente.webmanifest sw.js _headers icon-crediti-192-v20.png icon-crediti-512-v20.png apple-touch-icon-crediti-v20.png apple-touch-icon.png
+          git diff --cached --quiet && exit 0
+          git commit -m "Restaurar icone do Catalogo Crediti na tela inicial"
+          git push
