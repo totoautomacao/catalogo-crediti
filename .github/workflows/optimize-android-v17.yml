@@ -1,0 +1,124 @@
+name: Otimizar Android e PWA
+
+on:
+  push:
+    paths:
+      - '.github/workflows/optimize-android-v17.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Extrair fonte React e preparar pagina
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('index.html')
+          html=p.read_text(encoding='utf-8')
+
+          m=re.search(r'<script type="text/babel">([\s\S]*?)</script>', html)
+          if not m:
+              raise SystemExit('Bloco text/babel nao encontrado')
+          source=m.group(1).strip()+"\n"
+          Path('app-source.jsx').write_text(source, encoding='utf-8')
+
+          # Remove dependencias pesadas executadas/compiladas no proprio Android.
+          for src in [
+              'https://cdn.tailwindcss.com',
+              'https://unpkg.com/react@18/umd/react.production.min.js',
+              'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
+              'https://unpkg.com/@babel/standalone/babel.min.js',
+              'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+              'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
+          ]:
+              html=re.sub(r'\s*<script[^>]*src="'+re.escape(src)+r'"[^>]*></script>\s*', '\n', html)
+
+          # Remove Google Fonts para a primeira pintura nao depender de rede externa.
+          html=re.sub(r'\s*<link rel="preconnect" href="https://fonts.googleapis.com"[^>]*>\s*', '\n', html)
+          html=re.sub(r'\s*<link rel="preconnect" href="https://fonts.gstatic.com"[^>]*>\s*', '\n', html)
+          html=re.sub(r'\s*<link href="https://fonts.googleapis.com[^>]*>\s*', '\n', html)
+
+          # CSS ja pronto e bundle local, ambos do mesmo dominio.
+          if '/tailwind.css?v=17' not in html:
+              html=html.replace('<style>', '<link rel="preload" href="/tailwind.css?v=17" as="style" />\n<link rel="stylesheet" href="/tailwind.css?v=17" />\n<link rel="preload" href="/app.js?v=17" as="script" />\n<style>', 1)
+
+          # Primeira tela visivel instantaneamente enquanto o bundle inicia.
+          html=html.replace('<div id="root"></div>', '''<div id="root"><div id="crediti-boot" style="min-height:100vh;background:#F5F6F2;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif"><div style="width:min(420px,92vw);background:white;border-radius:28px;padding:26px;text-align:center;box-shadow:0 12px 36px rgba(18,18,18,.07)"><div style="width:58px;height:58px;border-radius:18px;background:#FDCA01;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:28px">🚗</div><div style="font-size:22px;font-weight:800;color:#111">Crediti</div><div style="margin-top:5px;font-size:13px;font-weight:600;color:#777">Abrindo catálogo…</div></div></div></div>''', 1)
+
+          html=html[:m.start()] + '<script src="/app.js?v=17" defer></script>' + html[m.end():]
+          p.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Compilar aplicativo local
+        run: |
+          npm install --no-save esbuild@0.25.10 react@18 react-dom@18 @supabase/supabase-js@2 heic2any@0.0.4 tailwindcss@3.4.17
+          cat > entry.jsx <<'EOF'
+          import ReactLib from 'react';
+          import { createRoot } from 'react-dom/client';
+          import { createClient as supabaseCreateClient } from '@supabase/supabase-js';
+          import heic2anyLib from 'heic2any';
+          const React = ReactLib;
+          const ReactDOM = { createRoot };
+          const supabase = { createClient: supabaseCreateClient };
+          window.heic2any = heic2anyLib;
+          EOF
+          cat app-source.jsx >> entry.jsx
+          npx esbuild entry.jsx --bundle --minify --format=iife --platform=browser --target=es2018 --outfile=app.js
+
+      - name: Compilar Tailwind local
+        run: |
+          cat > tailwind-input.css <<'EOF'
+          @tailwind base;
+          @tailwind components;
+          @tailwind utilities;
+          EOF
+          cat > tailwind.config.js <<'EOF'
+          module.exports = {
+            content: ['./index.html','./app-source.jsx'],
+            theme: { extend: {} },
+            plugins: []
+          }
+          EOF
+          npx tailwindcss -c tailwind.config.js -i tailwind-input.css -o tailwind.css --minify
+
+      - name: Atualizar service worker para pacote local
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text(encoding='utf-8')
+          import re
+          s=re.sub(r"const CORE='catalogo-crediti-v\d+';", "const CORE='catalogo-crediti-v13';", s)
+          s=re.sub(r"const VENDOR_FILES=\[[\s\S]*?\];", "const VENDOR_FILES=[];", s, count=1)
+          old="'/bank-c6.png'"
+          if "'/app.js'" not in s:
+              s=s.replace(old, old+",'/app.js','/tailwind.css'")
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Limpar arquivos temporarios
+        run: |
+          rm -f entry.jsx tailwind-input.css tailwind.config.js package.json package-lock.json
+          rm -rf node_modules
+
+      - name: Publicar versao otimizada
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html app-source.jsx app.js tailwind.css sw.js
+          if git diff --cached --quiet; then
+            echo "Sem alteracoes"
+          else
+            git commit -m "Otimizar carregamento Android e PWA"
+            git push
+          fi
