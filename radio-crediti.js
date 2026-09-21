@@ -70,7 +70,7 @@
   function syncMute(){const off=audio.muted||(!IS_IOS&&audio.volume===0);btnMute.textContent=off?'🔇':(!IS_IOS&&audio.volume<.45?'🔉':'🔊');localStorage.setItem(STORAGE_MUTE,off?'1':'0')}
   function syncPlay(){const playing=!audio.paused&&!audio.ended;shell.classList.toggle('is-playing',playing);btnPlay.textContent=playing?'❚❚':'▶';btnPlay.setAttribute('aria-label',playing?'Pausar rádio':'Tocar rádio')}
 
-  async function fetchTimed(url,ms=1200){
+  async function fetchTimed(url,ms=1800){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),ms);
     try{return await fetch(url,{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timer)}
@@ -86,14 +86,16 @@
     let data=null;
     for(const host of API_HOSTS){
       try{
-        const r=await fetchTimed(host+query,1100);
+        const r=await fetchTimed(host+query,1800);
         if(!r.ok)continue;
         const j=await r.json();
         if(Array.isArray(j)&&j.length){data=j;break}
       }catch(_){}
     }
     if(data){
-      stations=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase();return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320}).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,24);
+      const viable=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase(),br=Number(s.bitrate||0);return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&['mp3','aac','aacp','aac+'].includes(c)&&(br===0||br>=64)});
+      const preferred=viable.filter(s=>{const c=(s.codec||'').toLowerCase(),br=Number(s.bitrate||0);return c==='mp3'&&(br===0||br>=96)});
+      stations=(preferred.length>=4?preferred:viable).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,32);
       if(stations.length){currentIndex=0;prepared=true;if(sourceMode==='live'&&!audio.src)loadLive(false)}
     }
     preparing=false;
@@ -144,17 +146,17 @@
   }
 
   async function fallbackToOffline(autoplay=true){
-    if(sourceMode==='offline')return;
     const ok=await loadOffline(autoplay,false);
-    if(!ok)setStatus(navigator.onLine?'Sem rádio online e sem playlist salva':'Sem internet • abra uma vez online para preparar o offline');
+    if(!ok)setStatus(navigator.onLine?'Rádio online indisponível no momento':'Sem internet • abra uma vez online para preparar o offline');
+    return ok;
   }
   async function switchToOffline(){const wasPlaying=!audio.paused;await loadOffline(wasPlaying,false);if(!wasPlaying)syncPlay()}
-  async function switchToLive(){if(!navigator.onLine)return;const wasPlaying=!audio.paused;const ok=await fetchStations();if(ok){sourceMode='live';loadLive(wasPlaying)}}
+  async function switchToLive(){if(!navigator.onLine)return;const wasPlaying=!audio.paused;const ok=await fetchStations();if(ok&&stations.length){sourceMode='live';loadLive(wasPlaying)}}
 
   function armLiveFallback(){
     if(sourceMode!=='live')return;
     clearTimeout(liveFallbackTimer);
-    liveFallbackTimer=setTimeout(()=>{if(sourceMode==='live'&&audio.readyState<3)fallbackToOffline(true)},2800);
+    liveFallbackTimer=setTimeout(()=>{if(sourceMode==='live'&&audio.readyState<3)fallbackToOffline(true)},5000);
   }
   function tryNextLive(){
     if(!navigator.onLine){fallbackToOffline(true);return}
@@ -170,40 +172,34 @@
     setOpen(true);
     if(!audio.paused){audio.pause();return}
 
-    const saved=await cachedTracks();
     if(!navigator.onLine){await loadOffline(true,false);return}
 
-    if(sourceMode==='offline'&&saved.length){try{await audio.play();return}catch(_){}}
-
+    // Com internet, a prioridade sempre é a rádio ao vivo.
     setStatus('Conectando à rádio…');
-    let onlineReady=prepared;
+    let onlineReady=prepared&&stations.length>0;
     if(!onlineReady){
-      onlineReady=await Promise.race([fetchStations(),sleep(2400).then(()=>false)]);
+      onlineReady=await Promise.race([fetchStations(),sleep(5000).then(()=>false)]);
     }
-    if(!onlineReady){
-      const ok=await loadOffline(true,false);
-      if(ok)return;
-      onlineReady=await fetchStations();
+    if(onlineReady&&stations.length){
+      loadLive(false);
+      try{await audio.play();armLiveFallback();return}catch(_){}
     }
-    if(onlineReady){
-      if(sourceMode!=='live'||!audio.src)loadLive(false);
-      try{await audio.play();armLiveFallback()}catch(_){await fallbackToOffline(true)}
-    }else await fallbackToOffline(true);
+    await fallbackToOffline(true);
   });
 
   btnMute.addEventListener('click',()=>{if(IS_IOS){audio.muted=!audio.muted}else if(audio.volume===0){audio.volume=lastVolume;volume.value=String(Math.round(lastVolume*100));audio.muted=false}else{lastVolume=audio.volume;audio.volume=0;volume.value='0';audio.muted=true}syncMute()});
   volume.addEventListener('input',()=>{if(IS_IOS){setStatus('Volume: botões do celular');return}const v=Math.max(0,Math.min(1,Number(volume.value)/100));audio.volume=v;audio.muted=v===0;if(v>0){lastVolume=v;localStorage.setItem(STORAGE_VOL,String(v))}syncMute()});
 
-  audio.addEventListener('play',()=>{syncPlay();if(sourceMode==='offline'){const t=OFFLINE_PLAYLIST.find(x=>(audio.src||'').includes(encodeURIComponent(x.remote))||audio.src===x.remote||audio.src.endsWith(x.url));setStatus(`Offline • ${t?.title||'playlist salva'}`)}else setStatus('Tocando • qualidade alta')});
+  audio.addEventListener('play',()=>{syncPlay();if(sourceMode==='offline'){const t=OFFLINE_PLAYLIST.find(x=>audio.src.endsWith(x.url));setStatus(`Offline • ${t?.title||'playlist salva'}`)}else setStatus('Tocando • rádio online')});
   audio.addEventListener('pause',()=>{syncPlay();if(switching)return;if(sourceMode==='offline')setStatus('Offline pausado • toque para continuar');else if(prepared)setStatus('Pausado • toque para continuar')});
   audio.addEventListener('waiting',()=>{setStatus(sourceMode==='offline'?'Abrindo música offline…':'Conectando à rádio…');if(sourceMode==='live')armLiveFallback()});
   audio.addEventListener('stalled',()=>{if(switching)return;if(sourceMode==='live')armLiveFallback()});
   audio.addEventListener('error',()=>{if(switching)return;syncPlay();if(sourceMode==='offline')setTimeout(()=>loadOffline(true,true),300);else tryNextLive()});
   audio.addEventListener('ended',()=>{if(switching)return;sourceMode==='offline'?loadOffline(true,true):tryNextLive()});
-  audio.addEventListener('playing',()=>{clearTimeout(liveFallbackTimer);if(sourceMode==='live'){liveFailures=0;setStatus('Tocando • qualidade alta')}});
+  audio.addEventListener('playing',()=>{clearTimeout(liveFallbackTimer);if(sourceMode==='live'){liveFailures=0;setStatus('Tocando • rádio online')}});
 
   window.addEventListener('offline',()=>fallbackToOffline(!audio.paused));
-  window.addEventListener('online',()=>{cacheOfflinePlaylist();if(sourceMode==='offline'&&audio.paused)fetchStations()});
+  window.addEventListener('online',async()=>{cacheOfflinePlaylist();const wasPlaying=!audio.paused;const ok=await fetchStations();if(ok&&stations.length){sourceMode='live';loadLive(wasPlaying)}});
   if('mediaSession'in navigator){try{navigator.mediaSession.setActionHandler('play',()=>btnPlay.click());navigator.mediaSession.setActionHandler('pause',()=>audio.pause());navigator.mediaSession.setActionHandler('nexttrack',()=>sourceMode==='offline'?loadOffline(true,true):tryNextLive())}catch(_){}}
 
   syncMute();syncPlay();setOpen(false);
