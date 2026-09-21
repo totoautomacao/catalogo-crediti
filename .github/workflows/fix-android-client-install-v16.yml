@@ -1,0 +1,37 @@
+name: Corrigir instalacao Android cliente
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-android-client-install-v16.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Separar manifesto cliente e atualizar service worker
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          old='<link rel="manifest" href="/manifest.webmanifest?v=7" />'
+          new='''<script>\n(()=>{\n  const cliente=new URLSearchParams(window.location.search).get('cliente')==='1';\n  const manifest=document.createElement('link');\n  manifest.rel='manifest';\n  manifest.href=cliente?'/manifest-cliente.webmanifest?v=1':'/manifest.webmanifest?v=8';\n  document.head.appendChild(manifest);\n  if(cliente) document.title='Catálogo Crediti - Cliente';\n})();\n</script>'''
+          if old in s:
+              s=s.replace(old,new,1)
+          elif '/manifest-cliente.webmanifest' not in s:
+              raise SystemExit('Linha do manifesto nao encontrada')
+          oldsw="if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(console.error)); }"
+          newsw="""if ('serviceWorker' in navigator) {\n  window.addEventListener('load', async () => {\n    try {\n      const reg=await navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'});\n      await reg.update();\n    } catch(e) { console.error(e); }\n  });\n}"""
+          if oldsw in s:
+              s=s.replace(oldsw,newsw,1)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Corrigir atalho Android do catalogo cliente"
+          git push
