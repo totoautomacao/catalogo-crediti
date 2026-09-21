@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v18';
+const CORE='catalogo-crediti-v19';
 const MUSIC='crediti-radio-offline-v2';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
@@ -61,11 +61,11 @@ async function serveOfflineAudio(req){
 }
 
 self.addEventListener('install',event=>event.waitUntil((async()=>{try{const c=await caches.open(CORE);await c.addAll(CORE_FILES)}catch(_){}try{const m=await caches.open(MUSIC);await Promise.allSettled(OFFLINE_AUDIO.map(async u=>{try{const r=await fetch(u,{cache:'reload'});if(r&&r.ok)await m.put(u,r.clone())}catch(_){}}))}catch(_){}await Promise.allSettled(VENDOR_FILES.map(u=>cacheExternal(VENDOR,u)));await self.skipWaiting()})()));
-self.addEventListener('activate',event=>event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>(k.startsWith('catalogo-crediti-v')&&k!==CORE)||(k.startsWith('crediti-vendor-v')&&k!==VENDOR)||(k.startsWith('crediti-fotos-v')&&k!==PHOTOS)||(k.startsWith('crediti-api-v')&&k!==API)).map(k=>caches.delete(k)));await self.clients.claim()})()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>(k.startsWith('catalogo-crediti-v')&&k!==CORE)||(k.startsWith('crediti-radio-offline-v')&&k!==MUSIC)||(k.startsWith('crediti-vendor-v')&&k!==VENDOR)||(k.startsWith('crediti-fotos-v')&&k!==PHOTOS)||(k.startsWith('crediti-api-v')&&k!==API)).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener('message',event=>{if(event.data?.type==='CACHE_VEHICLE_IMAGES'&&Array.isArray(event.data.urls)){const urls=[...new Set(event.data.urls)];event.waitUntil(Promise.allSettled(urls.map(u=>cacheExternal(PHOTOS,u))))}});
 self.addEventListener('fetch',event=>{
  const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);
- if(url.origin===self.location.origin&&url.pathname.startsWith('/offline-audio/')){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
+ if(url.origin===self.location.origin&&url.pathname.startsWith('/offline-audio/')){event.respondWith(serveOfflineAudio(req));return}
  if(url.origin===self.location.origin&&url.pathname==='/api/offline-audio'){event.respondWith(serveOfflineAudio(req));return}
  if(req.destination==='audio'||url.hostname==='en.freepd.cn'){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
  if(req.mode==='navigate'){
