@@ -37,7 +37,7 @@
   let muted=localStorage.getItem(STORAGE_MUTE)==='1';
   audio.volume=IS_IOS?1:(muted?0:lastVolume);audio.muted=!!muted;
 
-  document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(24px + env(safe-area-inset-bottom))';
+  document.documentElement.style.overflowX='hidden';document.body.style.overflowX='hidden';document.documentElement.style.maxWidth='100%';document.body.style.maxWidth='100%';document.documentElement.style.touchAction='pan-y pinch-zoom';document.body.style.touchAction='pan-y pinch-zoom';document.body.style.paddingBottom='calc(18px + env(safe-area-inset-bottom))';document.documentElement.style.overscrollBehaviorY='none';document.body.style.overscrollBehaviorY='none';
 
   const style=document.createElement('style');
   style.textContent=`
