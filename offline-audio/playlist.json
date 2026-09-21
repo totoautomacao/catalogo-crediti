@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Duru Roomscene Lo-fi",
+    "category": "Lo-fi",
+    "file": "/offline-audio/duru-roomscene-lofi.mp3",
+    "bytes": 4162916
+  },
+  {
+    "title": "Duru Arcade Vibe",
+    "category": "Arcade",
+    "file": "/offline-audio/duru-arcade-vibe.mp3",
+    "bytes": 2506753
+  },
+  {
+    "title": "Duru Denparcade",
+    "category": "Eletrônica",
+    "file": "/offline-audio/duru-denparcade.mp3",
+    "bytes": 3415814
+  },
+  {
+    "title": "Duru Rhythm Fever",
+    "category": "Dance",
+    "file": "/offline-audio/duru-rhythm-fever.mp3",
+    "bytes": 3554786
+  },
+  {
+    "title": "Duru Rondo",
+    "category": "Instrumental",
+    "file": "/offline-audio/duru-rondo.mp3",
+    "bytes": 2575716
+  },
+  {
+    "title": "Duru Winter Arcade",
+    "category": "Eletrônica",
+    "file": "/offline-audio/duru-winter-arcade.mp3",
+    "bytes": 2485855
+  },
+  {
+    "title": "Duru AI Music",
+    "category": "Instrumental",
+    "file": "/offline-audio/duru-ai-ep2-music.mp3",
+    "bytes": 4802394
+  },
+  {
+    "title": "Hyak Rhythm",
+    "category": "Ritmo",
+    "file": "/offline-audio/hyak-ep1-rhythm.mp3",
+    "bytes": 6402132
+  }
+]
