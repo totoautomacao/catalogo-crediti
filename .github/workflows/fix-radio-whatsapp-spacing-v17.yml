@@ -1,0 +1,67 @@
+name: Corrigir espaco radio e WhatsApp
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-radio-whatsapp-spacing-v17.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ajustar espaco do catalogo cliente
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text()
+          # Mantem o app interno com pb-16 e reserva no cliente apenas a altura real da radio.
+          patterns = [
+              r'return <div className=\{CREDITI_MODO_CLIENTE\?"min-h-screen pb-0":"min-h-screen pb-16"\}>',
+              r"return <div className=\{CREDITI_MODO_CLIENTE\?'min-h-screen pb-0':'min-h-screen pb-16'\}>",
+          ]
+          replacement = 'return <div className={CREDITI_MODO_CLIENTE?"min-h-screen":"min-h-screen pb-16"} style={CREDITI_MODO_CLIENTE?{paddingBottom:"calc(92px + env(safe-area-inset-bottom))"}:undefined}>'
+          changed = False
+          for pat in patterns:
+              ns, n = re.subn(pat, replacement, s, count=1)
+              if n:
+                  s = ns
+                  changed = True
+                  break
+          if not changed:
+              # fallback robusto para qualquer pb-* atual no modo cliente
+              ns, n = re.subn(r'return <div className=\{CREDITI_MODO_CLIENTE\?"min-h-screen[^\"]*":"min-h-screen pb-16"\}>', replacement, s, count=1)
+              if n:
+                  s = ns
+                  changed = True
+          if not changed:
+              raise SystemExit('Nao encontrei o container principal do catalogo para ajustar')
+          p.write_text(s)
+
+          r = Path('radio-crediti.js')
+          js = r.read_text()
+          js = re.sub(r"document\.body\.style\.paddingBottom='calc\([^']+\)';", "document.body.style.paddingBottom='0px';", js, count=1)
+          js = re.sub(r"bottom:calc\([^;]+;", "bottom:calc(6px + env(safe-area-inset-bottom));", js, count=1)
+          r.write_text(js)
+          PY
+      - name: Atualizar cache do PWA
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('sw.js')
+          s=p.read_text()
+          s=s.replace("const CORE='catalogo-crediti-v12';","const CORE='catalogo-crediti-v13';")
+          s=s.replace("const CORE='catalogo-crediti-v11';","const CORE='catalogo-crediti-v13';")
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html radio-crediti.js sw.js
+          git diff --cached --quiet && exit 0
+          git commit -m "Evitar radio sobre o WhatsApp no ultimo veiculo"
+          git push
