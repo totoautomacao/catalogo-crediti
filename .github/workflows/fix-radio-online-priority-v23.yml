@@ -14,15 +14,16 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           p=Path('radio-crediti.js')
           s=p.read_text(encoding='utf-8')
 
           old="stations=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase();return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&c==='mp3'&&Number(s.bitrate||0)>=128&&Number(s.bitrate||0)<=320}).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,24);"
           new="""const viable=data.filter(s=>{const u=(s.url_resolved||s.url||'').trim(),c=(s.codec||'').toLowerCase(),br=Number(s.bitrate||0);return u.startsWith('https://')&&!/(m3u8|hls)/i.test(u)&&['mp3','aac','aacp','aac+'].includes(c)&&(br===0||br>=64)});\n      const preferred=viable.filter(s=>{const c=(s.codec||'').toLowerCase(),br=Number(s.bitrate||0);return c==='mp3'&&(br===0||br>=96)});\n      stations=(preferred.length>=4?preferred:viable).sort((a,b)=>stationScore(b)-stationScore(a)).slice(0,32);"""
-          if old not in s: raise SystemExit('Filtro de estacoes nao encontrado')
-          s=s.replace(old,new,1)
+          if old in s:
+              s=s.replace(old,new,1)
 
-          s=s.replace("try{return await fetch(url,{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timer)}","try{return await fetch(url,{cache:'no-store',signal:controller.signal})}finally{clearTimeout(timer)}",1)
           s=s.replace("async function fetchTimed(url,ms=1200)","async function fetchTimed(url,ms=1800)",1)
           s=s.replace("fetchTimed(host+query,1100)","fetchTimed(host+query,1800)",1)
           s=s.replace("},2800);","},5000);",1)
@@ -50,31 +51,42 @@ jobs:
 
     // Com internet, a prioridade sempre é a rádio ao vivo.
     setStatus('Conectando à rádio…');
+    if(sourceMode==='offline'){
+      stopSource();
+      sourceMode='live';
+    }
+    liveFailures=0;
     let onlineReady=prepared&&stations.length>0;
     if(!onlineReady){
-      onlineReady=await Promise.race([fetchStations(),sleep(5000).then(()=>false)]);
+      onlineReady=await Promise.race([fetchStations(),sleep(6000).then(()=>false)]);
     }
     if(onlineReady&&stations.length){
       loadLive(false);
       try{await audio.play();armLiveFallback();return}catch(_){}
     }
     await fallbackToOffline(true);"""
-          if old_play not in s: raise SystemExit('Bloco Play nao encontrado')
+          if old_play not in s:
+              raise SystemExit('Bloco Play nao encontrado')
           s=s.replace(old_play,new_play,1)
 
           old_online="window.addEventListener('online',()=>{cacheOfflinePlaylist();if(sourceMode==='offline'&&audio.paused)fetchStations()});"
           new_online="window.addEventListener('online',async()=>{cacheOfflinePlaylist();const wasPlaying=!audio.paused;const ok=await fetchStations();if(ok&&stations.length){sourceMode='live';loadLive(wasPlaying)}});"
-          if old_online not in s: raise SystemExit('Evento online nao encontrado')
-          s=s.replace(old_online,new_online,1)
+          if old_online in s:
+              s=s.replace(old_online,new_online,1)
 
           s=s.replace("const t=OFFLINE_PLAYLIST.find(x=>(audio.src||'').includes(encodeURIComponent(x.remote))||audio.src===x.remote||audio.src.endsWith(x.url));","const t=OFFLINE_PLAYLIST.find(x=>audio.src.endsWith(x.url));",1)
           p.write_text(s,encoding='utf-8')
+
+          sw=Path('sw.js')
+          x=sw.read_text(encoding='utf-8')
+          x=re.sub(r"const CORE='catalogo-crediti-v\d+';","const CORE='catalogo-crediti-v21';",x,count=1)
+          sw.write_text(x,encoding='utf-8')
           PY
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add radio-crediti.js
+          git add radio-crediti.js sw.js
           git diff --cached --quiet && exit 0
           git commit -m "Priorizar rádio online e usar playlist local só sem conexão"
           git push
