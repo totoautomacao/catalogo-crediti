@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v14';
+const CORE='catalogo-crediti-v15';
 const MUSIC='crediti-radio-offline-v1';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
@@ -14,9 +14,14 @@ self.addEventListener('fetch',event=>{
  const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);
  if(req.destination==='audio'||url.hostname==='en.freepd.cn'){event.respondWith(staleWhileRevalidate(req,MUSIC));return}
  if(req.mode==='navigate'){
-  const update=fetch(req,{cache:'no-store'}).then(async r=>{if(r&&r.ok){const c=await caches.open(CORE);await c.put('/index.html',r.clone());await c.put('/',r.clone())}return r}).catch(()=>null);
-  event.waitUntil(update.then(()=>{}));
-  event.respondWith((async()=>{const cached=(await caches.match('/index.html'))||(await caches.match('/'));if(cached)return cached;return (await update)||Response.error()})());return;
+  event.respondWith((async()=>{
+   try{
+    const fresh=await fetch(req,{cache:'no-store'});
+    if(fresh&&fresh.ok){const c=await caches.open(CORE);c.put('/index.html',fresh.clone()).catch(()=>{});c.put('/',fresh.clone()).catch(()=>{});return fresh}
+   }catch(_){}
+   return (await caches.match('/index.html'))||(await caches.match('/'))||Response.error();
+  })());
+  return;
  }
  if(url.origin===self.location.origin){event.respondWith(staleWhileRevalidate(req,CORE));return}
  if(url.hostname==='jfguumxlxmveuszddyky.supabase.co'&&url.pathname.includes('/storage/v1/object/')){event.respondWith(staleWhileRevalidate(req,PHOTOS));return}
