@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v13';
+const CORE='catalogo-crediti-v14';
 const MUSIC='crediti-radio-offline-v1';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
