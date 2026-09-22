@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v26';
+const CORE='catalogo-crediti-v27';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
@@ -85,7 +85,6 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  // Streams e preparação de fotos precisam ir direto para o servidor.
   if(url.origin===self.location.origin&&(url.pathname==='/api/radio'||url.pathname==='/api/share-image')){
     return;
   }
@@ -114,6 +113,4 @@ self.addEventListener('fetch',event=>{
     event.respondWith(staleWhileRevalidate(req,API));
     return;
   }
-
-  // Streams externos de rádio ao vivo usam a internet diretamente.
 });
