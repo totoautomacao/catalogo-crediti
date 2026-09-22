@@ -1,8 +1,8 @@
-const CORE='catalogo-crediti-v25';
+const CORE='catalogo-crediti-v26';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
-const CORE_FILES=['/','/index.html','/radio-crediti.js','/manifest.webmanifest','/manifest-cliente.webmanifest','/icon-crediti-192-v20.png','/icon-crediti-512-v20.png','/apple-touch-icon-crediti-v20.png','/apple-touch-icon.png','/bank-itau.png','/bank-bradesco.png','/bank-santander.png','/bank-bv.png','/bank-pan.png','/omni-logo-crediti.png','/bank-safra.png','/bank-volkswagen.png','/bank-c6.png','/app.js','/tailwind.css'];
+const CORE_FILES=['/','/index.html','/radio-crediti.js','/share-client.js','/manifest.webmanifest','/manifest-cliente.webmanifest','/icon-crediti-192-v20.png','/icon-crediti-512-v20.png','/apple-touch-icon-crediti-v20.png','/apple-touch-icon.png','/bank-itau.png','/bank-bradesco.png','/bank-santander.png','/bank-bv.png','/bank-pan.png','/omni-logo-crediti.png','/bank-safra.png','/bank-volkswagen.png','/bank-c6.png','/app.js','/tailwind.css'];
 const VENDOR_FILES=[];
 
 async function cacheExternal(cacheName,url){
@@ -85,12 +85,12 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  // O stream ao vivo do iPhone não pode ser colocado em cache nem bufferizado pelo service worker.
-  if(url.origin===self.location.origin&&url.pathname==='/api/radio'){
+  // Streams e preparação de fotos precisam ir direto para o servidor.
+  if(url.origin===self.location.origin&&(url.pathname==='/api/radio'||url.pathname==='/api/share-image')){
     return;
   }
 
-  if(url.origin===self.location.origin&&url.pathname==='/radio-crediti.js'){
+  if(url.origin===self.location.origin&&(url.pathname==='/radio-crediti.js'||url.pathname==='/share-client.js')){
     event.respondWith(networkFirst(req,CORE));
     return;
   }
