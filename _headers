@@ -4,6 +4,8 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /radio-crediti.js
   Cache-Control: no-cache, no-store, must-revalidate
+/share-client.js
+  Cache-Control: no-cache, no-store, must-revalidate
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 /manifest.webmanifest
