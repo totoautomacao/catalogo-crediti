@@ -8,6 +8,22 @@
 <link rel="preconnect" href="https://jfguumxlxmveuszddyky.supabase.co" crossorigin />
 <script>
 (()=>{
+  const host=window.location.hostname.toLowerCase();
+  const clientePorDominio=host==='catalogo.creditisolucoes.com.br'||host==='catalogo-crediti-cliente.pages.dev';
+  if(!clientePorDominio)return;
+  window.__CREDITI_CLIENT_HOST__=true;
+  const originalGet=URLSearchParams.prototype.get;
+  if(!URLSearchParams.prototype.__creditiClientHostPatched){
+    URLSearchParams.prototype.get=function(name){
+      if(name==='cliente'&&window.__CREDITI_CLIENT_HOST__)return '1';
+      return originalGet.call(this,name);
+    };
+    Object.defineProperty(URLSearchParams.prototype,'__creditiClientHostPatched',{value:true});
+  }
+})();
+</script>
+<script>
+(()=>{
   const cliente=new URLSearchParams(window.location.search).get('cliente')==='1';
   const manifest=document.createElement('link');
   manifest.rel='manifest';
