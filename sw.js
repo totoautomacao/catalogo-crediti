@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v29';
+const CORE='catalogo-crediti-v30';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
@@ -85,9 +85,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  if(url.origin===self.location.origin&&(url.pathname==='/api/radio'||url.pathname==='/api/share-image')){
-    return;
-  }
+  if(url.origin===self.location.origin&&(url.pathname==='/api/radio'||url.pathname==='/api/share-image'))return;
 
   if(url.origin===self.location.origin&&(url.pathname==='/radio-crediti.js'||url.pathname==='/share-client.js'||url.pathname==='/vehicle-gallery.js')){
     event.respondWith(networkFirst(req,CORE));
