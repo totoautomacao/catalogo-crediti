@@ -1,18 +1,28 @@
 (()=>{
-  if(window.__creditiVehicleGalleryV33)return;
-  window.__creditiVehicleGalleryV33=true;
+  if(window.__creditiVehicleGalleryV34)return;
+  window.__creditiVehicleGalleryV34=true;
 
   const SUPABASE_URL='https://jfguumxlxmveuszddyky.supabase.co';
   const SUPABASE_KEY='sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
   const DB_NAME='crediti-catalogo-offline-v2';
   const DB_STORE='dados';
-  const modoCliente=new URLSearchParams(location.search).get('cliente')==='1';
+  const paramsUrl=new URLSearchParams(location.search);
+  const modoCliente=paramsUrl.get('cliente')==='1';
+  const veiculoDoLink=paramsUrl.get('veiculo');
   const cache=new Map();
-  let modal=null,atual=null,indice=0,touchX=null,tokenAbertura=0,observerTimer=null;
-  let htmlOverflow='',bodyOverflow='';
+
+  let modal=null;
+  let atual=null;
+  let indice=0;
+  let touchX=null;
+  let tokenAbertura=0;
+  let observerTimer=null;
+  let linkAberto=false;
+  let htmlOverflow='';
+  let bodyOverflow='';
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
-  const ordenar=fotos=>[...(fotos||[])].filter(f=>f?.url_foto).sort((a,b)=>(a.ordem||99)-(b.ordem||99));
+  const ordenar=fotos=>[...(fotos||[])].filter(f=>f?.url_foto).sort((a,b)=>((a.ordem??999)-(b.ordem??999)));
   const nomeCard=article=>article?.querySelector('h3')?.textContent?.trim()||'Veículo Crediti';
 
   function garantirModal(){
@@ -27,19 +37,23 @@
 
   function travarPagina(on){
     if(on){
-      htmlOverflow=document.documentElement.style.overflow||'';
-      bodyOverflow=document.body.style.overflow||'';
-      document.documentElement.style.overflow='hidden';
-      document.body.style.overflow='hidden';
+      htmlOverflow=document.documentElement.style.getPropertyValue('overflow')||'';
+      bodyOverflow=document.body.style.getPropertyValue('overflow')||'';
+      document.documentElement.style.setProperty('overflow','hidden','important');
+      document.body.style.setProperty('overflow','hidden','important');
     }else{
-      document.documentElement.style.overflow=htmlOverflow;
-      document.body.style.overflow=bodyOverflow;
+      document.documentElement.style.removeProperty('overflow');
+      document.body.style.removeProperty('overflow');
+      if(htmlOverflow)document.documentElement.style.setProperty('overflow',htmlOverflow);
+      if(bodyOverflow)document.body.style.setProperty('overflow',bodyOverflow);
     }
   }
 
   function fechar(){
     tokenAbertura++;
-    atual=null;indice=0;touchX=null;
+    atual=null;
+    indice=0;
+    touchX=null;
     if(modal){modal.style.display='none';modal.innerHTML=''}
     travarPagina(false);
   }
@@ -55,17 +69,22 @@
     const root=garantirModal();
     const fotos=atual.fotos;
     indice=Math.max(0,Math.min(indice,fotos.length-1));
-    const f=fotos[indice];
-    const thumbs=fotos.map((x,i)=>`<button type="button" data-crediti-thumb="${i}" aria-label="Abrir foto ${i+1}" style="width:72px;height:58px;flex:0 0 72px;border:${i===indice?'3px solid #FDCA01':'1px solid #ddd'};border-radius:11px;padding:2px;background:#fff;overflow:hidden;touch-action:manipulation"><img src="${esc(x.url_foto)}" alt="Miniatura ${i+1}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:7px"></button>`).join('');
+    const foto=fotos[indice];
+    const thumbs=fotos.map((x,i)=>`<button type="button" data-crediti-thumb="${i}" aria-label="Abrir foto ${i+1}" style="width:74px;height:60px;flex:0 0 74px;border:${i===indice?'3px solid #FDCA01':'1px solid #ddd'};border-radius:11px;padding:2px;background:#fff;overflow:hidden;touch-action:manipulation"><img src="${esc(x.url_foto)}" alt="Miniatura ${i+1}" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;border-radius:7px"></button>`).join('');
+
     root.style.display='flex';
     travarPagina(true);
     root.innerHTML=`<div style="width:min(980px,100%);max-height:96vh;background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.4)">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #ecece7">
-        <div style="min-width:0"><div style="font-size:10px;font-weight:900;letter-spacing:.13em;color:#888;text-transform:uppercase">Galeria do veículo</div><div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(atual.titulo)}</div><div style="font-size:11px;color:#777;font-weight:800;margin-top:2px">${indice+1} de ${fotos.length} foto${fotos.length>1?'s':''}</div></div>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:900;letter-spacing:.13em;color:#888;text-transform:uppercase">Galeria do veículo</div>
+          <div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(atual.titulo)}</div>
+          <div style="font-size:11px;color:#777;font-weight:800;margin-top:2px">${indice+1} de ${fotos.length} foto${fotos.length>1?'s':''}</div>
+        </div>
         <button id="crediti-gallery-close" type="button" aria-label="Fechar" style="width:44px;height:44px;min-width:44px;border:0;border-radius:14px;background:#f2f2ed;font-size:26px;font-weight:900;touch-action:manipulation">×</button>
       </div>
       <div id="crediti-gallery-stage" style="height:min(64vh,600px);min-height:250px;background:#f5f5f1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;touch-action:pan-y">
-        <img src="${esc(f.url_foto)}" alt="${esc(atual.titulo)} - foto ${indice+1}" decoding="async" style="width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none">
+        <img src="${esc(foto.url_foto)}" alt="${esc(atual.titulo)} - foto ${indice+1}" decoding="async" style="width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none">
         ${fotos.length>1?`<button id="crediti-gallery-prev" type="button" aria-label="Foto anterior" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);width:46px;height:46px;border:0;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:28px;font-weight:900;touch-action:manipulation">‹</button><button id="crediti-gallery-next" type="button" aria-label="Próxima foto" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);width:46px;height:46px;border:0;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:28px;font-weight:900;touch-action:manipulation">›</button>`:''}
         <div style="position:absolute;right:10px;bottom:9px;background:rgba(0,0,0,.72);color:#fff;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900">${indice+1}/${fotos.length}</div>
       </div>
@@ -76,41 +95,63 @@
     root.querySelector('#crediti-gallery-prev')?.addEventListener('click',()=>mover(-1));
     root.querySelector('#crediti-gallery-next')?.addEventListener('click',()=>mover(1));
     root.querySelectorAll('[data-crediti-thumb]').forEach(b=>b.addEventListener('click',()=>{indice=Number(b.dataset.creditiThumb)||0;render()}));
+
     const stage=root.querySelector('#crediti-gallery-stage');
     stage?.addEventListener('touchstart',e=>{touchX=e.touches?.[0]?.clientX??null},{passive:true});
-    stage?.addEventListener('touchend',e=>{if(touchX==null)return;const x=e.changedTouches?.[0]?.clientX??touchX;const d=x-touchX;touchX=null;if(Math.abs(d)>42&&fotos.length>1)mover(d<0?1:-1)},{passive:true});
+    stage?.addEventListener('touchend',e=>{
+      if(touchX==null)return;
+      const x=e.changedTouches?.[0]?.clientX??touchX;
+      const d=x-touchX;
+      touchX=null;
+      if(Math.abs(d)>42&&fotos.length>1)mover(d<0?1:-1);
+    },{passive:true});
   }
 
   async function lerOffline(id){
     try{
-      const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+      const db=await new Promise((resolve,reject)=>{
+        const r=indexedDB.open(DB_NAME);
+        r.onsuccess=()=>resolve(r.result);
+        r.onerror=()=>reject(r.error);
+      });
       const chave=modoCliente?'veiculos-publicos':'veiculos-internos';
-      const registro=await new Promise((resolve,reject)=>{const tx=db.transaction(DB_STORE,'readonly');const r=tx.objectStore(DB_STORE).get(chave);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+      const registro=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(DB_STORE,'readonly');
+        const r=tx.objectStore(DB_STORE).get(chave);
+        r.onsuccess=()=>resolve(r.result);
+        r.onerror=()=>reject(r.error);
+      });
       const lista=Array.isArray(registro?.dados)?registro.dados:[];
       const v=lista.find(x=>String(x.id)===String(id));
       return v?ordenar(v.fotos_veiculo):[];
-    }catch(_){return []}
+    }catch(_){
+      return [];
+    }
   }
 
   async function buscarFotos(id){
-    const params=new URLSearchParams();
-    params.set('id',`eq.${id}`);
-    params.set('select','id,fotos_veiculo(id,url_foto,ordem)');
-    params.set('limit','1');
+    const headers={apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'};
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),6500);
+    const timer=setTimeout(()=>controller.abort(),5500);
     try{
-      const r=await fetch(`${SUPABASE_URL}/rest/v1/veiculos?${params.toString()}`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
-      if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      const data=await r.json();
-      const fotos=ordenar(data?.[0]?.fotos_veiculo||[]);
-      if(fotos.length)return fotos;
-
       const direta=`${SUPABASE_URL}/rest/v1/fotos_veiculo?veiculo_id=eq.${encodeURIComponent(id)}&select=id,url_foto,ordem&order=ordem.asc`;
-      const r2=await fetch(direta,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
+      const r=await fetch(direta,{headers,cache:'no-store',signal:controller.signal});
+      if(r.ok){
+        const fotos=ordenar(await r.json());
+        if(fotos.length)return fotos;
+      }
+
+      const q=new URLSearchParams();
+      q.set('id',`eq.${id}`);
+      q.set('select','id,fotos_veiculo(id,url_foto,ordem)');
+      q.set('limit','1');
+      const r2=await fetch(`${SUPABASE_URL}/rest/v1/veiculos?${q.toString()}`,{headers,cache:'no-store',signal:controller.signal});
       if(!r2.ok)throw new Error(`HTTP ${r2.status}`);
-      return ordenar(await r2.json());
-    }finally{clearTimeout(timer)}
+      const data=await r2.json();
+      return ordenar(data?.[0]?.fotos_veiculo||[]);
+    }finally{
+      clearTimeout(timer);
+    }
   }
 
   async function abrir(article){
@@ -130,7 +171,9 @@
     if(token!==tokenAbertura)return;
     if(offline.length){
       cache.set(String(id),offline);
-      atual={id,titulo,fotos:offline};indice=0;render();
+      atual={id,titulo,fotos:offline};
+      indice=0;
+      render();
     }
 
     if(!navigator.onLine)return;
@@ -138,10 +181,12 @@
       const fotos=await buscarFotos(id);
       if(token!==tokenAbertura||!fotos.length)return;
       cache.set(String(id),fotos);
-      atual={id,titulo,fotos};indice=0;render();
+      atual={id,titulo,fotos};
+      indice=0;
+      render();
       atualizarBadges();
     }catch(e){
-      console.warn('Galeria: não foi possível atualizar as fotos.',e);
+      console.warn('Galeria: não foi possível atualizar todas as fotos.',e);
     }
   }
 
@@ -155,6 +200,7 @@
     const foto=article.querySelector('img');
     const area=foto?.parentElement;
     if(!foto||!area)return;
+
     article.dataset.creditiGalleryReady='1';
     area.style.position='relative';
     area.style.cursor='zoom-in';
@@ -170,23 +216,40 @@
     badge.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();abrir(article)},{passive:false});
     area.appendChild(badge);
 
-    area.addEventListener('click',e=>{if(e.target.closest('button,a'))return;e.preventDefault();abrir(article)});
+    area.addEventListener('click',e=>{
+      if(e.target.closest('button,a'))return;
+      e.preventDefault();
+      abrir(article);
+    });
+  }
+
+  function abrirLinkDireto(){
+    if(!veiculoDoLink||linkAberto)return;
+    const article=document.getElementById(`veiculo-${veiculoDoLink}`);
+    if(!article)return;
+    linkAberto=true;
+    article.scrollIntoView({behavior:'auto',block:'center'});
+    setTimeout(()=>abrir(article),120);
   }
 
   function atualizarBadges(){
     document.querySelectorAll('article[id^="veiculo-"]').forEach(article=>{
       const badge=article.querySelector('.crediti-gallery-badge');
-      if(!badge){prepararCard(article);return}
-      const id=article.id.replace('veiculo-','');
-      const n=cache.get(String(id))?.length||qtdCard(article);
-      const texto=n>1?`VER ${n} FOTOS`:'AMPLIAR FOTO';
-      if(badge.textContent!==texto)badge.textContent=texto;
+      if(!badge){
+        prepararCard(article);
+      }else{
+        const id=article.id.replace('veiculo-','');
+        const n=cache.get(String(id))?.length||qtdCard(article);
+        const texto=n>1?`VER ${n} FOTOS`:'AMPLIAR FOTO';
+        if(badge.textContent!==texto)badge.textContent=texto;
+      }
     });
+    abrirLinkDireto();
   }
 
   function agendar(){
     clearTimeout(observerTimer);
-    observerTimer=setTimeout(atualizarBadges,80);
+    observerTimer=setTimeout(atualizarBadges,70);
   }
 
   document.addEventListener('keydown',e=>{
@@ -196,7 +259,19 @@
     else if(e.key==='ArrowLeft'&&atual.fotos.length>1)mover(-1);
   });
 
+  window.CreditiVehicleGallery={
+    abrirPorId(id){
+      const article=document.getElementById(`veiculo-${id}`);
+      if(!article)return false;
+      article.scrollIntoView({behavior:'auto',block:'center'});
+      abrir(article);
+      return true;
+    },
+    fechar
+  };
+
   const obs=new MutationObserver(agendar);
   obs.observe(document.getElementById('root')||document.body,{childList:true,subtree:true});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',atualizarBadges,{once:true});else atualizarBadges();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',atualizarBadges,{once:true});
+  else atualizarBadges();
 })();
