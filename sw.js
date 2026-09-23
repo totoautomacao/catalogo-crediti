@@ -1,4 +1,4 @@
-const CORE='catalogo-crediti-v30';
+const CORE='catalogo-crediti-v32';
 const PHOTOS='crediti-fotos-v2';
 const VENDOR='crediti-vendor-v1';
 const API='crediti-api-v1';
@@ -60,7 +60,13 @@ self.addEventListener('activate',event=>event.waitUntil((async()=>{
 self.addEventListener('message',event=>{
   if(event.data?.type==='CACHE_VEHICLE_IMAGES'&&Array.isArray(event.data.urls)){
     const urls=[...new Set(event.data.urls)];
-    event.waitUntil(Promise.allSettled(urls.map(u=>cacheExternal(PHOTOS,u))));
+    event.waitUntil((async()=>{
+      await new Promise(r=>setTimeout(r,2500));
+      for(const u of urls){
+        await cacheExternal(PHOTOS,u);
+        await new Promise(r=>setTimeout(r,120));
+      }
+    })());
   }
 });
 
