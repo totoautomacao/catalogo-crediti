@@ -7,7 +7,7 @@
   const DB_NAME='crediti-catalogo-offline-v2';
   const DB_STORE='dados';
   const cache=new Map();
-  let modal=null,atual=null,indice=0,touchX=null,abertura=0;
+  let modal=null,atual=null,indice=0,touchX=null,abertura=0,badgeScheduled=false;
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const nome=v=>[v?.marca,v?.modelo].filter(Boolean).join(' ').trim()||'Veículo Crediti';
@@ -33,9 +33,7 @@
         req.onsuccess=()=>resolve(req.result||[]);
         req.onerror=()=>reject(req.error);
       });
-      (Array.isArray(dados)?dados:[]).forEach(v=>{
-        cache.set(String(v.id),{veiculo:v,fotos:ordenar(v)});
-      });
+      (Array.isArray(dados)?dados:[]).forEach(v=>cache.set(String(v.id),{veiculo:v,fotos:ordenar(v)}));
       atualizarBadges();
     }catch(_){}
   }
@@ -63,10 +61,7 @@
   }
 
   function preloadFotos(fotos){
-    (fotos||[]).forEach((f,i)=>{
-      if(i>4)return;
-      try{const img=new Image();img.decoding='async';img.src=f.url_foto}catch(_){}
-    });
+    (fotos||[]).slice(0,5).forEach(f=>{try{const img=new Image();img.decoding='async';img.src=f.url_foto}catch(_){}});
   }
 
   function ir(i){
@@ -111,7 +106,7 @@
     p.set('select','id,marca,modelo,fotos_veiculo(id,url_foto,ordem)');
     p.set('limit','1');
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),7000);
+    const timer=setTimeout(()=>controller.abort(),6000);
     try{
       const r=await fetch(`${SUPABASE_URL}/rest/v1/veiculos?${p.toString()}`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
       if(!r.ok)throw new Error('Falha ao carregar galeria');
@@ -119,6 +114,7 @@
       if(!data?.[0])throw new Error('Veículo não encontrado');
       const item={veiculo:data[0],fotos:ordenar(data[0])};
       cache.set(String(id),item);
+      atualizarBadges();
       return item;
     }finally{clearTimeout(timer)}
   }
@@ -129,7 +125,7 @@
     const fallback=article.querySelector('img')?.src||'';
     const token=++abertura;
     const pronto=cache.get(String(id));
-    if(pronto){
+    if(pronto?.fotos?.length){
       atual=pronto;indice=0;preloadFotos(pronto.fotos);render();
       buscarSomenteVeiculo(id).then(novo=>{if(token!==abertura)return;atual=novo;indice=Math.min(indice,Math.max(0,novo.fotos.length-1));preloadFotos(novo.fotos);render()}).catch(()=>{});
       return;
@@ -142,7 +138,7 @@
     }catch(e){
       if(token!==abertura)return;
       const root=garantirModal();root.style.display='flex';
-      root.innerHTML=`<div style="width:min(520px,100%);background:#fff;border-radius:24px;padding:22px;text-align:center"><div style="font-size:18px;font-weight:900">Não consegui abrir as outras fotos</div><div style="font-size:13px;color:#666;margin-top:6px">A foto principal continua disponível. Verifique a conexão e toque novamente.</div><button id="crediti-gallery-close" type="button" style="margin-top:16px;border:0;border-radius:14px;background:#FDCA01;padding:12px 20px;font-weight:900">Fechar</button></div>`;
+      root.innerHTML=`<div style="width:min(520px,100%);background:#fff;border-radius:24px;padding:22px;text-align:center"><div style="font-size:18px;font-weight:900">Não consegui abrir as outras fotos</div><div style="font-size:13px;color:#666;margin-top:6px">Verifique a conexão e toque novamente.</div><button id="crediti-gallery-close" type="button" style="margin-top:16px;border:0;border-radius:14px;background:#FDCA01;padding:12px 20px;font-weight:900">Fechar</button></div>`;
       root.querySelector('#crediti-gallery-close')?.addEventListener('click',fechar);
     }
   }
@@ -157,22 +153,40 @@
     document.querySelectorAll('article[id^="veiculo-"]').forEach(article=>{
       const id=article.id.replace('veiculo-','');
       const n=cache.get(String(id))?.fotos?.length||quantidadeDoCard(article)||1;
+      const texto=n>1?`VER ${n} FOTOS`:'AMPLIAR FOTO';
       let badge=article.querySelector('.crediti-gallery-badge');
       if(!badge){
         article.style.cursor='pointer';
         const foto=article.querySelector('img');const area=foto?.parentElement;
         if(!area)return;
         area.style.position='relative';area.style.cursor='zoom-in';
-        badge=document.createElement('span');badge.className='crediti-gallery-badge';
-        badge.style.cssText='position:absolute;left:10px;bottom:10px;z-index:3;background:rgba(0,0,0,.8);color:#fff;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:900;letter-spacing:.03em;pointer-events:none;box-shadow:0 3px 10px rgba(0,0,0,.18)';
+        badge=document.createElement('button');
+        badge.type='button';
+        badge.className='crediti-gallery-badge';
+        badge.setAttribute('data-crediti-gallery-open','1');
+        badge.setAttribute('aria-label','Abrir galeria de fotos do veículo');
+        badge.style.cssText='position:absolute;left:10px;bottom:10px;z-index:8;border:0;background:rgba(0,0,0,.86);color:#fff;border-radius:999px;padding:9px 12px;font-size:10px;font-weight:900;letter-spacing:.03em;cursor:pointer;pointer-events:auto;touch-action:manipulation;box-shadow:0 3px 12px rgba(0,0,0,.25)';
         area.appendChild(badge);
       }
-      badge.textContent=n>1?`TOQUE PARA VER ${n} FOTOS`:'TOQUE PARA AMPLIAR';
+      if(badge.textContent!==texto)badge.textContent=texto;
     });
+  }
+
+  function agendarBadges(){
+    if(badgeScheduled)return;
+    badgeScheduled=true;
+    requestAnimationFrame(()=>{badgeScheduled=false;atualizarBadges()});
   }
 
   document.addEventListener('click',e=>{
     if(e.target.closest('#crediti-vehicle-gallery,#crediti-share-picker'))return;
+    const badge=e.target.closest?.('[data-crediti-gallery-open="1"]');
+    if(badge){
+      const article=badge.closest('article[id^="veiculo-"]');
+      if(!article)return;
+      e.preventDefault();e.stopPropagation();
+      abrir(article);return;
+    }
     const article=e.target.closest?.('article[id^="veiculo-"]');if(!article)return;
     if(e.target.closest('button,a,input,textarea,select,label,[role="button"]'))return;
     e.preventDefault();abrir(article);
@@ -185,7 +199,7 @@
     else if(e.key==='ArrowLeft'&&atual.fotos.length>1)ir(indice-1);
   });
 
-  const obs=new MutationObserver(()=>atualizarBadges());
+  const obs=new MutationObserver(agendarBadges);
   obs.observe(document.documentElement,{childList:true,subtree:true});
   const iniciar=()=>{atualizarBadges();carregarCacheLocal()};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
