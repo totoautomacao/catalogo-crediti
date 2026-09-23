@@ -1,6 +1,6 @@
 (()=>{
-  if(window.__creditiVehicleGalleryV32)return;
-  window.__creditiVehicleGalleryV32=true;
+  if(window.__creditiVehicleGalleryV33)return;
+  window.__creditiVehicleGalleryV33=true;
 
   const SUPABASE_URL='https://jfguumxlxmveuszddyky.supabase.co';
   const SUPABASE_KEY='sb_publishable_F84YmaFbhJGUmNXYrye1Rw_h6xKvW3B';
@@ -93,13 +93,23 @@
   }
 
   async function buscarFotos(id){
-    const url=`${SUPABASE_URL}/rest/v1/fotos_veiculo?veiculo_id=eq.${encodeURIComponent(id)}&select=id,url_foto,ordem&order=ordem.asc`;
+    const params=new URLSearchParams();
+    params.set('id',`eq.${id}`);
+    params.set('select','id,fotos_veiculo(id,url_foto,ordem)');
+    params.set('limit','1');
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),5000);
+    const timer=setTimeout(()=>controller.abort(),6500);
     try{
-      const r=await fetch(url,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/veiculos?${params.toString()}`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
       if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      return ordenar(await r.json());
+      const data=await r.json();
+      const fotos=ordenar(data?.[0]?.fotos_veiculo||[]);
+      if(fotos.length)return fotos;
+
+      const direta=`${SUPABASE_URL}/rest/v1/fotos_veiculo?veiculo_id=eq.${encodeURIComponent(id)}&select=id,url_foto,ordem&order=ordem.asc`;
+      const r2=await fetch(direta,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`,Accept:'application/json'},cache:'no-store',signal:controller.signal});
+      if(!r2.ok)throw new Error(`HTTP ${r2.status}`);
+      return ordenar(await r2.json());
     }finally{clearTimeout(timer)}
   }
 
