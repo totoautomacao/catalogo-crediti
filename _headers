@@ -8,6 +8,8 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /vehicle-gallery.js
   Cache-Control: no-cache, no-store, must-revalidate
+/professional-links.js
+  Cache-Control: no-cache, no-store, must-revalidate
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 /manifest.webmanifest
