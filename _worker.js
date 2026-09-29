@@ -1,10 +1,7 @@
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Proxy somente das fotos públicas dos veículos para compartilhamento nativo.
-    // Isso transforma a imagem do Supabase em um arquivo servido pelo próprio domínio
-    // da Crediti, evitando falhas de CORS ao anexar fotos no iPhone e Android.
     if (url.pathname === '/api/share-image') {
       const src = url.searchParams.get('src');
       if (!src) return new Response('Imagem não informada', { status: 400 });
@@ -20,6 +17,11 @@ export default {
       ) {
         return new Response('Origem não permitida', { status: 403 });
       }
+
+      const cache = caches.default;
+      const cacheKey = new Request(url.toString(), { method: 'GET' });
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
 
       try {
         const upstream = await fetch(new Request(target.toString(), {
@@ -38,17 +40,18 @@ export default {
 
         const headers = new Headers();
         headers.set('Content-Type', type);
-        headers.set('Cache-Control', 'public, max-age=3600');
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('CDN-Cache-Control', 'public, max-age=31536000, immutable');
         headers.set('Access-Control-Allow-Origin', '*');
         headers.set('X-Content-Type-Options', 'nosniff');
-        return new Response(upstream.body, { status: 200, headers });
+        const response = new Response(upstream.body, { status: 200, headers });
+        ctx?.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
       } catch (_) {
         return new Response('Imagem indisponível', { status: 502 });
       }
     }
 
-    // Proxy somente das faixas CC0 usadas pela antiga playlist offline da Rádio Crediti.
-    // Mantido por compatibilidade, mas a rádio atual é somente online.
     if (url.pathname === '/api/offline-audio') {
       const src = url.searchParams.get('src');
       if (!src) return new Response('Áudio não informado', { status: 400 });
@@ -90,8 +93,6 @@ export default {
       }
     }
 
-    // Todos os demais arquivos, inclusive sw.js, manifests e ícones,
-    // são servidos diretamente do projeto. Não substituir o service worker aqui.
     return env.ASSETS.fetch(request);
   }
 };
