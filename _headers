@@ -2,6 +2,8 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
+/admin-auth.js
+  Cache-Control: no-cache, no-store, must-revalidate
 /radio-crediti.js
   Cache-Control: no-cache, no-store, must-revalidate
 /share-client.js
