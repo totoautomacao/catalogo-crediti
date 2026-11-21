@@ -12,7 +12,10 @@
   if(u.origin!==location.origin||!u.pathname.startsWith('/backend/')||u.pathname.startsWith('/backend/auth/'))return nativeFetch(input,init);
   if(!client)await ready;
   const headers=new Headers(input instanceof Request?input.headers:undefined);new Headers(init.headers).forEach((v,k)=>headers.set(k,v));if(current?.csrf)headers.set('X-Crediti-CSRF',current.csrf);
-  const r=await nativeFetch(input,{...init,headers,credentials:'same-origin',cache:'no-store'});
+  // Hostinger CDN treats a route ending in .jpg as a static file. Send uploads
+  // through the explicit PHP endpoint so they reach authentication and GD.
+  let target=input;if(u.pathname.startsWith('/backend/storage/v1/object/fotos/')){const direct=new URL('/api.php',location.origin);direct.searchParams.set('route',u.pathname.slice('/backend/'.length));u.searchParams.forEach((v,k)=>direct.searchParams.set(k,v));target=input instanceof Request?new Request(direct.href,input):direct.href;}
+  const r=await nativeFetch(target,{...init,headers,credentials:'same-origin',cache:'no-store'});
   if(r.status===401&&!client){current=null;login();}return r;
  };
  window.CreditiAdminAuth={async logout(){try{await call('logout',{});}finally{current=null;try{indexedDB.deleteDatabase('crediti-catalogo-hostinger-v42')}catch{}for(const k of ['crediti_admin_session_v1','crediti_catalogo_admin_v1','crediti_catalogo_cache_v1'])localStorage.removeItem(k);location.replace('/admin');}}};
