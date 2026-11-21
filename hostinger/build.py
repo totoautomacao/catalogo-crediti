@@ -19,7 +19,7 @@ p=OUT/'vehicle-gallery.js';p.write_text(p.read_text().replace("(a.textContent||'
 p=OUT/'instagram-client.js';s=p.read_text().replace('https://jfguumxlxmveuszddyky.supabase.co/functions/v1/catalogo-instagram','/backend/instagram');s=s.replace('async function api(action,body){',"async function api(action,body){if(action.startsWith('action=job'))body={};");p.write_text(s)
 p=OUT/'index.html';s=p.read_text();s=re.sub(r'<link rel="preconnect"[^>]+>','',s)
 s=re.sub(r'<script>\(\(\)=>\{const host=location.hostname.*?</script>', '<script>(()=>{const admin=/^/admin/?$/.test(location.pathname);window.__CREDITI_CLIENT_HOST__=!admin;const get=URLSearchParams.prototype.get;URLSearchParams.prototype.get=function(k){return k===\'cliente\'&&window.__CREDITI_CLIENT_HOST__?\'1\':get.call(this,k)}})();</script>'.replace('/^/admin/?$/','/^\\/admin\\/?$/'),s,count=1)
-s=re.sub(r'\?v=\d+', '?v=45',s);p.write_text(s)
+s=re.sub(r'\?v=\d+', '?v=46',s);p.write_text(s)
 for name in ['manifest.webmanifest','manifest-cliente.webmanifest']:
  p=OUT/name;d=json.loads(p.read_text());d['start_url']='/admin' if name=='manifest.webmanifest' else '/';d['scope']='/';d['id']=d['start_url'];p.write_text(json.dumps(d,ensure_ascii=False))
 data=json.loads((BACKUP/'backup.json').read_text());admin=json.loads((BACKUP/'admin.json').read_text())

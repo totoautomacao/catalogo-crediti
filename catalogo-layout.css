@@ -48,3 +48,9 @@ body{background:#f7f8fa;color:#22232b}
  #root main>section:not(.catalogo-intro)>div:first-child h2{font-size:26px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Category buttons share the existing search and vehicle cards. */
+.catalogo-category-tabs{display:flex;gap:10px;margin:0 0 22px}
+.catalogo-category-tabs button{min-height:46px;min-width:112px;padding:10px 24px;border:1px solid #d8dbe2;border-radius:999px;background:#fff;color:#343640;font-size:15px;font-weight:700;cursor:pointer}
+.catalogo-category-tabs button[aria-pressed="true"]{background:#22232b;border-color:#22232b;color:#fff}
+.catalogo-category-tabs button:focus-visible{outline:3px solid #FDCA01;outline-offset:3px}
