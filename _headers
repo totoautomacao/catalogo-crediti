@@ -22,3 +22,9 @@
   Cache-Control: no-cache, no-store, must-revalidate
 /apple-touch-icon-crediti-v20.png
   Cache-Control: no-cache, no-store, must-revalidate
+
+/privacy-reset.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/api/share-image
+  Cache-Control: no-store, max-age=0
+  CDN-Cache-Control: no-store

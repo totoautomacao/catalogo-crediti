@@ -18,15 +18,15 @@ export default {
         return new Response('Origem não permitida', { status: 403 });
       }
 
-      const cache = caches.default;
-      const cacheKey = new Request(url.toString(), { method: 'GET' });
-      const cached = await cache.match(cacheKey);
-      if (cached) return cached;
+      // Shared images are fetched afresh. Do not read/write edge cache or attach
+      // visitor cookies to the image request.
 
       try {
         const upstream = await fetch(new Request(target.toString(), {
           method: 'GET',
           headers: { 'Accept': 'image/*' },
+          cache: 'no-store',
+          credentials: 'omit',
           redirect: 'follow'
         }));
         if (!upstream.ok || !upstream.body) {
@@ -40,12 +40,12 @@ export default {
 
         const headers = new Headers();
         headers.set('Content-Type', type);
-        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-        headers.set('CDN-Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('Cache-Control', 'no-store, max-age=0');
+        headers.set('CDN-Cache-Control', 'no-store');
+        headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
         headers.set('Access-Control-Allow-Origin', '*');
         headers.set('X-Content-Type-Options', 'nosniff');
         const response = new Response(upstream.body, { status: 200, headers });
-        ctx?.waitUntil(cache.put(cacheKey, response.clone()));
         return response;
       } catch (_) {
         return new Response('Imagem indisponível', { status: 502 });
