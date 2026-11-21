@@ -2,6 +2,19 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    if (url.pathname === '/api/instagram/callback') {
+      if (request.method !== 'GET') return new Response('Método não permitido', {status:405});
+      const target = new URL('https://jfguumxlxmveuszddyky.supabase.co/functions/v1/catalogo-instagram');
+      target.searchParams.set('action','callback');
+      for (const key of ['code','state','error']) if (url.searchParams.has(key)) target.searchParams.set(key,url.searchParams.get(key));
+      const response = await fetch(target,{redirect:'manual',cache:'no-store',credentials:'omit'});
+      const location = response.headers.get('Location');
+      if (location && /^https:\/\/catalogo-crediti\.pages\.dev\/\?instagram=(connected|cancelled)$/.test(location)) return new Response(null,{status:303,headers:{Location:location,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});
+      const data = await response.json().catch(()=>({}));
+      const message = String(data.error || 'Não foi possível concluir a conexão.').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      return new Response('<!doctype html><html lang="pt-BR"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar Instagram</title><body style="font-family:system-ui;max-width:520px;margin:60px auto;padding:24px"><h1>Conectar @crediti.oficial</h1><p>'+message+'</p><a href="https://catalogo-crediti.pages.dev/">Voltar ao catálogo</a></body></html>',{status:response.ok?400:response.status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"}});
+    }
+
     if (url.pathname === '/api/share-image') {
       const src = url.searchParams.get('src');
       if (!src) return new Response('Imagem não informada', { status: 400 });

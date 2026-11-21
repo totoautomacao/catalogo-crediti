@@ -28,3 +28,9 @@
 /api/share-image
   Cache-Control: no-store, max-age=0
   CDN-Cache-Control: no-store
+
+/instagram-client.js
+  Cache-Control: no-store, max-age=0
+/api/instagram/*
+  Cache-Control: no-store, max-age=0
+  Referrer-Policy: no-referrer
