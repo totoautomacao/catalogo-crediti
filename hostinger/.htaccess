@@ -1,0 +1,22 @@
+Options -Indexes
+DirectoryIndex index.html
+<IfModule mod_headers.c>
+Header always set X-Content-Type-Options "nosniff"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set X-Frame-Options "DENY"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+<FilesMatch "\.(html|js|webmanifest)$">
+Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+</FilesMatch>
+</IfModule>
+RewriteEngine On
+RewriteRule ^(?:\.private|hostinger|supabase|tests|scripts|\.git)(?:/|$) - [F,L]
+RewriteRule ^backend/(.*)$ api.php?route=$1 [QSA,L]
+RewriteRule ^api/instagram/callback$ api.php?route=instagram&action=callback [QSA,L]
+RewriteRule ^api/share-image$ api.php?route=share-image [QSA,L]
+RewriteRule ^api/offline-audio$ api.php?route=offline-audio [QSA,L]
+RewriteRule ^admin/?$ index.html [L]
+RewriteRule ^(?:veiculo|carro|moto)/[a-zA-Z0-9-]+/?$ index.html [L]
+<FilesMatch "^(runtime|instagram|seed|settings)\.php$">
+Require all denied
+</FilesMatch>

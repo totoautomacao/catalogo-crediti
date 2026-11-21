@@ -1,0 +1,12 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE veiculos(id TEXT PRIMARY KEY,categoria TEXT,placa TEXT,marca TEXT,modelo TEXT,versao TEXT,ano_fabricacao INTEGER,ano_modelo INTEGER,quilometragem INTEGER,valor_fipe REAL,valor_vendedor REAL,nosso_valor REAL,criado_em TEXT,valor_lojista REAL,descricao TEXT,fipe_marca_codigo TEXT,fipe_modelo_codigo TEXT,fipe_ano_codigo TEXT,deleted_at TEXT);
+CREATE UNIQUE INDEX active_plate ON veiculos(placa) WHERE deleted_at IS NULL;
+CREATE TABLE fotos_veiculo(id TEXT PRIMARY KEY,veiculo_id TEXT REFERENCES veiculos(id) ON DELETE CASCADE,url_foto TEXT NOT NULL,criado_em TEXT,ordem INTEGER NOT NULL DEFAULT 1);
+CREATE INDEX fotos_parent ON fotos_veiculo(veiculo_id,ordem);
+CREATE TABLE admin(id TEXT PRIMARY KEY,email TEXT NOT NULL,password_hash TEXT NOT NULL);
+CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,admin_id TEXT NOT NULL,csrf TEXT NOT NULL,expires INTEGER NOT NULL);
+CREATE TABLE attempts(ip_hash TEXT PRIMARY KEY,window_start INTEGER NOT NULL,count INTEGER NOT NULL);
+CREATE TABLE instagram_connection(id TEXT PRIMARY KEY,instagram_id TEXT NOT NULL,encrypted_token TEXT NOT NULL,account_type TEXT NOT NULL,expires_at INTEGER NOT NULL);
+CREATE TABLE instagram_oauth(state_hash TEXT PRIMARY KEY,owner_id TEXT NOT NULL,expires INTEGER NOT NULL);
+CREATE TABLE instagram_jobs(id TEXT PRIMARY KEY,owner_id TEXT NOT NULL,payload_hash TEXT NOT NULL,format TEXT NOT NULL,status TEXT NOT NULL,items TEXT NOT NULL,error TEXT,locked_until INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
+CREATE TABLE audit(id INTEGER PRIMARY KEY AUTOINCREMENT,created_at TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,entity_id TEXT NOT NULL);
