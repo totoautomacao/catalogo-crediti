@@ -11,13 +11,13 @@
   "theme_color": "#FDCA01",
   "icons": [
     {
-      "src": "/icon-crediti-192-v47.png",
+      "src": "/icon-crediti-192-v48.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-crediti-512-v47.png",
+      "src": "/icon-crediti-512-v48.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

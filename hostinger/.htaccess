@@ -8,6 +8,9 @@ Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 <FilesMatch "\.(html|js|webmanifest)$">
 Header set Cache-Control "no-cache, max-age=0, must-revalidate"
 </FilesMatch>
+<FilesMatch "^(apple-touch-icon.*\.png|icon-(crediti-)?(192|512).*\.png|favicon-crediti.*\.png)$">
+Header set Cache-Control "no-cache, max-age=0, must-revalidate"
+</FilesMatch>
 </IfModule>
 RewriteEngine On
 RewriteRule ^(?:\.private|hostinger|supabase|tests|scripts|\.git)(?:/|$) - [F,L]
