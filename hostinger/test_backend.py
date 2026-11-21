@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix='catalogo-test-') as td:
   req('POST','storage/v1/object/fotos/'+vid+'/bad.jpg',400,data=b'<?php echo 1;')
   req('GET','share-image',params={'src':'https://evil.invalid/a.jpg'},expected=400)
   assert req('GET','share-image',params={'src':'/media/'+photo_path}).headers['Content-Type']=='image/jpeg'
-  req('GET','instagram?action=health');req('POST','instagram?action=publish',503,json={})
+  req('GET','instagram?action=health');req('POST','instagram?action=publish',410,json={});req('POST','instagram?action=job&id=old',410,json={})
   v2=req('POST','rest/v1/veiculos',201,json={'modelo':'Outro'}).json()[0]
   req('POST','rest/v1/fotos_veiculo',400,json=[{'veiculo_id':v2['id'],'url_foto':'/media/'+photo_path,'ordem':1}])
   req('DELETE','rest/v1/fotos_veiculo?id=eq.'+p['id'])

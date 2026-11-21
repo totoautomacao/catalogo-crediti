@@ -26,13 +26,13 @@ caches DNS antigos expiram. As requisições mantêm a origem pública canônica
 
 ## Instagram
 
-A integração aceita apenas `crediti.oficial`. A configuração privada é
-`.catalogo-data/instagram-settings.php`, retornando um array com `app_secret`.
-Essa chave nunca vai ao frontend, ao Git ou aos backups públicos. O callback é
-`https://catalogo.creditisolucoes.com.br/api/instagram/callback`.
-A publicação só começa após a confirmação no botão Publicar do administrador.
-Sem configuração e autorização, o sistema informa a pendência e não usa a
-conta pessoal nem baixa fotos para a galeria.
+O fluxo de Feed e Stories entrega arquivos ao compartilhamento nativo do celular,
+para edição no Instagram. Não publica por API, não baixa fotos na galeria e não
+consegue escolher ou verificar a conta do aplicativo. A interface pede conferir
+`@crediti.oficial` e cancelar se aparecer o perfil pessoal. Apenas os arquivos são
+enviados; a legenda pode ser copiada separadamente. Um retorno de Web Share não
+confirma publicação. A integração OAuth anterior permanece guardada, mas as ações
+`publish` e `job` retornam 410, inclusive para clientes antigos.
 
 ## Validação e volta à versão anterior
 

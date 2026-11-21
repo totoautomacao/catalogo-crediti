@@ -52,6 +52,7 @@ function ig_advance(string $id,string $owner,array $c): array {
 }
 function instagram(string $method): never {
     header('Referrer-Policy: no-referrer');$action=$_GET['action']??'status';
+    if(in_array($action,['publish','job'],true))fail('Publicação direta desativada. Atualize o catálogo para enviar as fotos ao Instagram e editar antes de publicar.',410);
     if($action==='health')respond(['configured'=>ig_secret()!=='','profile'=>PROFILE]);
     if(ig_secret()==='')fail('A conexão está sendo finalizada. Falta autorizar @crediti.oficial no catálogo.',503);
     try{
