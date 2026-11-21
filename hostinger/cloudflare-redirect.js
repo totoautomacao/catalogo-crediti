@@ -11,7 +11,7 @@ export default {
       to.search = incoming.search;
       return new Response(null, {status:302, headers:{Location:to.href,'Cache-Control':'no-store'}});
     }
-    const upstream = new URL(incoming.pathname + incoming.search, 'https://catalogo-teste.creditisolucoes.com.br');
+    const upstream = new URL('/catalogo-hostinger' + incoming.pathname + incoming.search, 'https://creditisolucoes.com.br');
     const headers = new Headers(request.headers);
     headers.delete('host');
     const response = await fetch(upstream, {method:request.method,headers,

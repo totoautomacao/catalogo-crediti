@@ -48,9 +48,10 @@ function body(): array {
 }
 function request_origin(): string {
     $host=$_SERVER['HTTP_HOST']??'';
-    $allowed=['catalogo.creditisolucoes.com.br','catalogo-teste.creditisolucoes.com.br'];
+    $allowed=['catalogo.creditisolucoes.com.br','catalogo-teste.creditisolucoes.com.br','creditisolucoes.com.br'];
     if(getenv('CREDITI_TEST_MODE')==='1')$allowed[]='127.0.0.1:8097';
     if(!in_array($host,$allowed,true))fail('Endereço não autorizado.',403);
+    if($host==='creditisolucoes.com.br')return PUBLIC_ORIGIN;
     return (getenv('CREDITI_TEST_MODE')==='1'?'http':'https').'://'.$host;
 }
 function same_origin(): void {

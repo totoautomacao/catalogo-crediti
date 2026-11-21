@@ -19,8 +19,10 @@ com retenção de 168 snapshots. Fotos removidas não são apagadas do disco.
 
 Diretório publicado: `public_html/catalogo-hostinger` da conta `u550209265`.
 Domínio final: `catalogo.creditisolucoes.com.br`.
-O subdomínio `catalogo-teste` serve o mesmo diretório para validar a migração
-e atender o proxy de compatibilidade enquanto caches DNS antigos expiram.
+O subdomínio temporário `catalogo-teste` foi usado para validar a migração e
+removido antes da troca, preservando a vaga de subdomínio do plano. O proxy de
+compatibilidade usa `creditisolucoes.com.br/catalogo-hostinger/` enquanto
+caches DNS antigos expiram. As requisições mantêm a origem pública canônica.
 
 ## Instagram
 
