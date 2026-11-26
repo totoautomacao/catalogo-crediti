@@ -44,11 +44,26 @@ try {
         if(!one('SELECT id FROM veiculos WHERE id=? AND deleted_at IS NULL',[$id]))fail('Veículo não encontrado.',404);
         if((int)($_SERVER['CONTENT_LENGTH']??0)>13*1024*1024)fail('Foto maior que 12 MB.',413);
         if(is_file($path))fail('Arquivo já existe.',409);
-        $files=array_values($_FILES);$tmp=$files[0]['tmp_name']??null;
-        if($tmp){if(($files[0]['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)fail('Falha no envio da foto.');$bytes=file_get_contents($tmp);}else{$bytes=file_get_contents('php://input');}
+        $files=array_values($_FILES);$file=$files[0]??null;
+        if($file){
+            $error=$file['error']??UPLOAD_ERR_NO_FILE;
+            if(in_array($error,[UPLOAD_ERR_INI_SIZE,UPLOAD_ERR_FORM_SIZE],true))fail('A foto ultrapassou o limite de envio do servidor. Selecione novamente para reduzir automaticamente.',413);
+            if($error!==UPLOAD_ERR_OK||empty($file['tmp_name']))fail('O envio da foto ficou incompleto. Selecione a foto novamente.');
+            $bytes=file_get_contents($file['tmp_name']);
+        }else{
+            if(str_starts_with(strtolower($_SERVER['CONTENT_TYPE']??''),'multipart/form-data'))fail('A foto não chegou ao servidor. Atualize o catálogo e selecione as fotos novamente.');
+            $bytes=file_get_contents('php://input');
+        }
+        if($bytes===false||$bytes==='')fail('A foto chegou vazia. Selecione as fotos novamente.');
         if(strlen($bytes)>12*1024*1024)fail('Foto maior que 12 MB.',413);
-        $info=@getimagesizefromstring($bytes);if(!$info||!in_array($info['mime'],['image/jpeg','image/png','image/webp'],true)||$info[0]*$info[1]>25000000)fail('Formato de foto inválido.');
+        $info=@getimagesizefromstring($bytes);
+        if(!$info||!in_array($info['mime'],['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/x-ms-bmp','image/avif'],true))fail('Não foi possível ler esta imagem. Selecione-a novamente para converter para JPG.');
+        if($info[0]*$info[1]>25000000)fail('A resolução da foto é muito alta. Selecione-a novamente para reduzir automaticamente.',413);
         $im=@imagecreatefromstring($bytes);if(!$im)fail('Foto inválida.');
+        // Composite transparency onto white before writing the catalog's JPEG.
+        $flat=imagecreatetruecolor(imagesx($im),imagesy($im));
+        imagefill($flat,0,0,imagecolorallocate($flat,255,255,255));
+        imagecopy($flat,$im,0,0,0,0,imagesx($im),imagesy($im));imagedestroy($im);$im=$flat;
         backup_before_write();if(!is_dir(dirname($path)))mkdir(dirname($path),0755,true);
         if(!imagejpeg($im,$path,92))fail('Não foi possível guardar a foto.',500);imagedestroy($im);chmod($path,0644);
         respond(['Key'=>'fotos/'.$name,'Id'=>uuid()],200);

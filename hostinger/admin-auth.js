@@ -46,7 +46,18 @@ html.crediti-admin-locked #root{visibility:hidden!important}
   // Hostinger CDN treats a route ending in .jpg as a static file. Send uploads
   // through the explicit PHP endpoint so they reach authentication and GD.
   let target=input;if(u.pathname.startsWith('/backend/storage/v1/object/fotos/')){const direct=new URL('/api.php',location.origin);direct.searchParams.set('route',u.pathname.slice('/backend/'.length));u.searchParams.forEach((v,k)=>direct.searchParams.set(k,v));target=input instanceof Request?new Request(direct.href,input):direct.href;}
-  const r=await nativeFetch(target,{...init,headers,credentials:'same-origin',cache:'no-store'});
+  // Supabase uses an empty multipart field name, which PHP discards.
+  // Send the actual photo bytes instead; never relabel a multipart envelope as JPEG.
+  let photoBody=init.body;
+  if(u.pathname.startsWith('/backend/storage/v1/object/fotos/')){
+   if(photoBody===undefined&&input instanceof Request&&/multipart\/form-data/i.test(input.headers.get('Content-Type')||''))photoBody=await input.clone().formData();
+   if(photoBody instanceof FormData){
+    const photos=[...photoBody.values()].filter(value=>value instanceof Blob);
+    if(photos.length!==1)throw new Error('Selecione uma foto por envio.');
+    photoBody=photos[0];headers.set('Content-Type',photoBody.type||'application/octet-stream');headers.delete('Content-Length');
+   }
+  }
+  const r=await nativeFetch(target,{...init,...(photoBody!==undefined?{body:photoBody}:{}),headers,credentials:'same-origin',cache:'no-store'});
   if(r.status===401&&!client){current=null;login();}return r;
  };
  window.CreditiAdminAuth={async logout(){try{await call('logout',{});}finally{current=null;try{indexedDB.deleteDatabase('crediti-catalogo-hostinger-v42')}catch{}for(const k of ['crediti_admin_session_v1','crediti_catalogo_admin_v1','crediti_catalogo_cache_v1'])localStorage.removeItem(k);location.replace('/admin');}}};

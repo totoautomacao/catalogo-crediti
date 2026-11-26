@@ -40,6 +40,19 @@ with tempfile.TemporaryDirectory(prefix='catalogo-test-') as td:
   buff=io.BytesIO();Image.new('RGB',(50,50),'yellow').save(buff,format='JPEG');image=buff.getvalue()
   photo_path=vid+'/test.jpg'
   req('POST','storage/v1/object/fotos/'+photo_path,files={'file':('test.jpg',image,'image/jpeg')})
+  # Empty multipart field names are dropped by PHP: regression for Supabase uploads.
+  lost=req('POST','storage/v1/object/fotos/'+vid+'/empty-field.jpg',400,files={'':('photo.jpg',image,'image/jpeg')})
+  assert 'não chegou' in lost.json()['message'],lost.text
+  for fmt in ['JPEG','PNG','WEBP','GIF','BMP','AVIF']:
+   buff=io.BytesIO();Image.new('RGB',(120,80),'yellow').save(buff,format=fmt)
+   req('POST','storage/v1/object/fotos/'+vid+'/'+fmt+'.jpg',data=buff.getvalue(),headers={'Content-Type':'application/octet-stream'})
+   assert Image.open(app/'media'/vid/(fmt+'.jpg')).format=='JPEG'
+  fixtures=SCRATCH/'photo-fixtures'/'converted'
+  for index,file in enumerate(fixtures.glob('*.jpg')):
+   req('POST','storage/v1/object/fotos/'+vid+'/converted-'+str(index)+'.jpg',data=file.read_bytes(),headers={'Content-Type':'image/jpeg'})
+  req('POST','storage/v1/object/fotos/'+vid+'/empty.jpg',400,data=b'',headers={'Content-Type':'image/jpeg'})
+  req('POST','storage/v1/object/fotos/'+vid+'/broken.jpg',400,data=b'broken',headers={'Content-Type':'image/jpeg'})
+  print('PASS: dropped multipart field reproduced; raw JPEG/PNG/WebP/GIF/BMP/AVIF uploads; normalized browser fixtures; empty and corrupt files rejected')
   p=req('POST','rest/v1/fotos_veiculo',201,json=[{'veiculo_id':vid,'url_foto':base+'/backend/storage/v1/object/public/fotos/'+photo_path,'ordem':1}]).json()[0]
   req('PATCH','rest/v1/fotos_veiculo?id=eq.'+p['id'],json={'ordem':2})
   assert req('GET','rest/v1/veiculos?select=*,fotos_veiculo(id,url_foto,ordem)').json()[0]['fotos_veiculo'][0]['ordem']==2
